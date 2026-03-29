@@ -5,6 +5,8 @@ interface ClipItem {
   preview: string;
   hash: string;
   created_at: string;
+  pinned: number;
+  copy_count: number;
 }
 
 interface ClipboardAPI {
@@ -13,6 +15,9 @@ interface ClipboardAPI {
   copyClip(id: number): Promise<void>;
   deleteClip(id: number): Promise<void>;
   clearClips(): Promise<void>;
+  pinClip(id: number): Promise<void>;
+  unpinClip(id: number): Promise<void>;
+  exportClips(): Promise<ClipItem[]>;
   onClipboardChanged(callback: (clip: ClipItem) => void): void;
   onRefresh(callback: () => void): void;
 }

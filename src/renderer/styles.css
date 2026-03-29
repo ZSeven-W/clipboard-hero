@@ -138,11 +138,29 @@ body {
   transition: all 0.12s;
   position: relative;
   border: 1px solid transparent;
+  border-left: 3px solid transparent;
 }
 
 .clip-item:hover {
   background: #313244;
   border-color: #45475a;
+  border-left-color: #45475a;
+}
+
+.clip-item.focused {
+  background: #313244;
+  border-color: #89b4fa;
+  border-left-color: #89b4fa;
+  outline: none;
+}
+
+.clip-item.pinned {
+  border-left-color: #f9e2af !important;
+}
+
+.clip-item.pinned.focused {
+  border-color: #89b4fa;
+  border-left-color: #f9e2af !important;
 }
 
 .clip-item.copied {
@@ -163,6 +181,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   margin-bottom: 4px;
+  padding-right: 54px; /* space for pin + delete buttons */
 }
 
 .clip-meta {
@@ -190,6 +209,51 @@ body {
   color: #6c7086;
 }
 
+.clip-count {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #45475a;
+  color: #cba6f7;
+  font-weight: 600;
+}
+
+/* ── Pin button ── */
+
+.clip-pin {
+  position: absolute;
+  top: 8px;
+  right: 32px;
+  background: none;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+  padding: 2px 4px;
+  border-radius: 4px;
+  line-height: 1;
+  filter: grayscale(1);
+}
+
+.clip-item:hover .clip-pin,
+.clip-item.focused .clip-pin {
+  opacity: 0.6;
+}
+
+.clip-pin:hover {
+  opacity: 1 !important;
+  filter: grayscale(0);
+  background: #45475a;
+}
+
+.clip-pin.active {
+  opacity: 1 !important;
+  filter: grayscale(0);
+}
+
+/* ── Delete button ── */
+
 .clip-delete {
   position: absolute;
   top: 8px;
@@ -206,7 +270,8 @@ body {
   line-height: 1;
 }
 
-.clip-item:hover .clip-delete {
+.clip-item:hover .clip-delete,
+.clip-item.focused .clip-delete {
   opacity: 1;
 }
 

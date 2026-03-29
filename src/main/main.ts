@@ -7,8 +7,10 @@ import {
   Tray,
   Menu,
   nativeImage,
+  dialog,
 } from 'electron';
 import path from 'path';
+import fs from 'fs';
 import {
   initDatabase,
   getClips,
@@ -17,6 +19,10 @@ import {
   deleteClip,
   clearClips,
   closeDatabase,
+  pinClip,
+  unpinClip,
+  incrementCopyCount,
+  getAllClips,
 } from './database';
 import { startWatching, stopWatching, skipNextChange } from './clipboard-watcher';
 
@@ -91,6 +97,22 @@ function createTray(): void {
     { label: 'Show / Hide', click: toggleWindow },
     { type: 'separator' },
     {
+      label: 'Export History...',
+      click: async () => {
+        const win = mainWindow;
+        const result = await dialog.showSaveDialog(win ?? new BrowserWindow({ show: false }), {
+          title: 'Export Clipboard History',
+          defaultPath: `clipboard-hero-export-${new Date().toISOString().slice(0, 10)}.json`,
+          filters: [{ name: 'JSON Files', extensions: ['json'] }],
+        });
+
+        if (!result.canceled && result.filePath) {
+          const clips = getAllClips();
+          fs.writeFileSync(result.filePath, JSON.stringify(clips, null, 2), 'utf-8');
+        }
+      },
+    },
+    {
       label: 'Clear History',
       click: () => {
         clearClips();
@@ -110,12 +132,16 @@ function setupIPC(): void {
   ipcMain.handle('clips:search', (_event, query: string) => searchClips(query));
   ipcMain.handle('clips:delete', (_event, id: number) => deleteClip(id));
   ipcMain.handle('clips:clear', () => clearClips());
+  ipcMain.handle('clips:pin', (_event, id: number) => pinClip(id));
+  ipcMain.handle('clips:unpin', (_event, id: number) => unpinClip(id));
+  ipcMain.handle('clips:export', () => getAllClips());
 
   ipcMain.handle('clips:copy', (_event, id: number) => {
     const clip = getClipById(id);
     if (clip) {
       skipNextChange();
       clipboard.writeText(clip.content);
+      incrementCopyCount(id);
     }
   });
 }
