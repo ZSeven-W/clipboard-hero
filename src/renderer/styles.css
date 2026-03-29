@@ -1,0 +1,254 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #1e1e2e;
+  color: #cdd6f4;
+  overflow: hidden;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  border: 1px solid #313244;
+}
+
+/* ── Title bar (draggable) ── */
+
+.titlebar {
+  -webkit-app-region: drag;
+  background: #181825;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #313244;
+  border-radius: 12px 12px 0 0;
+  user-select: none;
+}
+
+.title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #cdd6f4;
+}
+
+.shortcut-hint {
+  font-size: 11px;
+  color: #6c7086;
+  background: #313244;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* ── Search bar ── */
+
+.search-bar {
+  padding: 8px 12px;
+}
+
+.search-bar input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #313244;
+  border-radius: 8px;
+  background: #11111b;
+  color: #cdd6f4;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.search-bar input:focus {
+  border-color: #89b4fa;
+}
+
+.search-bar input::placeholder {
+  color: #6c7086;
+}
+
+/* ── Category tabs ── */
+
+.category-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 12px 8px;
+}
+
+.category-tab {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #6c7086;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.category-tab:hover {
+  background: #313244;
+  color: #cdd6f4;
+}
+
+.category-tab.active {
+  background: #89b4fa;
+  color: #1e1e2e;
+  font-weight: 600;
+}
+
+/* ── Content area ── */
+
+.content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
+
+.clip-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 8px;
+}
+
+.clip-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.clip-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.clip-list::-webkit-scrollbar-thumb {
+  background: #313244;
+  border-radius: 3px;
+}
+
+/* ── Clip items ── */
+
+.clip-item {
+  padding: 10px 12px;
+  margin-bottom: 4px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.12s;
+  position: relative;
+  border: 1px solid transparent;
+}
+
+.clip-item:hover {
+  background: #313244;
+  border-color: #45475a;
+}
+
+.clip-item.copied {
+  background: #a6e3a1 !important;
+  border-color: #a6e3a1 !important;
+}
+
+.clip-item.copied .clip-preview,
+.clip-item.copied .clip-time,
+.clip-item.copied .clip-badge {
+  color: #1e1e2e !important;
+}
+
+.clip-preview {
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+
+.clip-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.clip-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.badge-code  { background: #cba6f7; color: #1e1e2e; }
+.badge-url   { background: #89b4fa; color: #1e1e2e; }
+.badge-email { background: #f9e2af; color: #1e1e2e; }
+.badge-phone { background: #a6e3a1; color: #1e1e2e; }
+.badge-text  { background: #45475a; color: #cdd6f4; }
+
+.clip-time {
+  font-size: 11px;
+  color: #6c7086;
+}
+
+.clip-delete {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: #6c7086;
+  font-size: 16px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.clip-item:hover .clip-delete {
+  opacity: 1;
+}
+
+.clip-delete:hover {
+  background: #f38ba8;
+  color: #1e1e2e;
+}
+
+/* ── Preview panel ── */
+
+.preview-panel {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  background: #181825;
+  border-left: 1px solid #313244;
+  padding: 12px;
+  overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform 0.2s ease;
+}
+
+.preview-panel.visible {
+  transform: translateX(0);
+}
+
+.preview-panel pre {
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Menlo', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: #cdd6f4;
+}
+
+/* ── Empty state ── */
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6c7086;
+  font-size: 14px;
+}

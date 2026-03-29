@@ -1,0 +1,15 @@
+import { contextBridge, ipcRenderer } from 'electron';
+
+contextBridge.exposeInMainWorld('api', {
+  getClips: (category?: string) => ipcRenderer.invoke('clips:getAll', category),
+  searchClips: (query: string) => ipcRenderer.invoke('clips:search', query),
+  copyClip: (id: number) => ipcRenderer.invoke('clips:copy', id),
+  deleteClip: (id: number) => ipcRenderer.invoke('clips:delete', id),
+  clearClips: () => ipcRenderer.invoke('clips:clear'),
+  onClipboardChanged: (callback: (clip: unknown) => void) => {
+    ipcRenderer.on('clipboard:changed', (_event, clip) => callback(clip));
+  },
+  onRefresh: (callback: () => void) => {
+    ipcRenderer.on('clips:refresh', () => callback());
+  },
+});

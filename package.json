@@ -1,0 +1,26 @@
+{
+  "name": "clipboard-hero",
+  "version": "1.0.0",
+  "description": "AI-powered clipboard history manager — local-first, open source",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "build:ts": "tsc",
+    "copy:assets": "cp src/renderer/index.html dist/renderer/ && cp src/renderer/styles.css dist/renderer/",
+    "prebuild": "rm -rf dist",
+    "build": "npm run build:ts && npm run copy:assets",
+    "start": "npm run build && electron .",
+    "rebuild": "node scripts/rebuild.mjs"
+  },
+  "keywords": ["clipboard", "manager", "electron", "ai", "local-first"],
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.8",
+    "@types/node": "^20.0.0",
+    "@electron/rebuild": "^3.7.0",
+    "electron": "^28.0.0",
+    "typescript": "^5.3.0"
+  }
+}

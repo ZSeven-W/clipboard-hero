@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'">
+  <title>ClipboardHero</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="titlebar" id="titlebar">
+    <span class="title">ClipboardHero</span>
+    <span class="shortcut-hint">Cmd+Shift+V</span>
+  </div>
+
+  <div class="search-bar">
+    <input type="text" id="search-input" placeholder="Search clipboard history..." autofocus>
+  </div>
+
+  <div class="category-tabs">
+    <button class="category-tab active" data-category="all">All</button>
+    <button class="category-tab" data-category="code">Code</button>
+    <button class="category-tab" data-category="url">URL</button>
+    <button class="category-tab" data-category="email">Email</button>
+    <button class="category-tab" data-category="phone">Phone</button>
+    <button class="category-tab" data-category="text">Text</button>
+  </div>
+
+  <div class="content">
+    <div id="clip-list" class="clip-list"></div>
+    <div id="preview-panel" class="preview-panel">
+      <pre id="preview-content"></pre>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
