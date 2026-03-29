@@ -23,8 +23,10 @@ import {
   unpinClip,
   incrementCopyCount,
   getAllClips,
+  getClipCount,
 } from './database';
-import { startWatching, stopWatching, skipNextChange } from './clipboard-watcher';
+import { startWatching, stopWatching, skipNextChange, updateInterval } from './clipboard-watcher';
+import { loadSettings, getSettings, saveSettings, Settings } from './settings';
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -97,6 +99,18 @@ function createTray(): void {
     { label: 'Show / Hide', click: toggleWindow },
     { type: 'separator' },
     {
+      label: 'Settings...',
+      click: () => {
+        if (!mainWindow) return;
+        if (!mainWindow.isVisible()) {
+          mainWindow.center();
+          mainWindow.show();
+          mainWindow.focus();
+        }
+        mainWindow.webContents.send('settings:open');
+      },
+    },
+    {
       label: 'Export History...',
       click: async () => {
         const win = mainWindow;
@@ -144,6 +158,25 @@ function setupIPC(): void {
       incrementCopyCount(id);
     }
   });
+
+  ipcMain.handle('clips:count', () => getClipCount());
+
+  ipcMain.handle('settings:get', () => getSettings());
+  ipcMain.handle('settings:save', (_event, update: Partial<Settings>) => {
+    const settings = saveSettings(update);
+
+    // Apply polling interval change
+    updateInterval(settings.pollingInterval);
+
+    // Apply launch at login
+    if (!app.isPackaged) {
+      // In dev mode, setLoginItemSettings may not work — skip silently
+    } else {
+      app.setLoginItemSettings({ openAtLogin: settings.launchAtLogin });
+    }
+
+    return settings;
+  });
 }
 
 app.whenReady().then(() => {
@@ -152,6 +185,7 @@ app.whenReady().then(() => {
     app.dock.hide();
   }
 
+  const settings = loadSettings();
   initDatabase();
   createWindow();
   createTray();
@@ -161,7 +195,7 @@ app.whenReady().then(() => {
 
   startWatching((clip) => {
     mainWindow?.webContents.send('clipboard:changed', clip);
-  });
+  }, settings.pollingInterval);
 });
 
 app.on('before-quit', () => {

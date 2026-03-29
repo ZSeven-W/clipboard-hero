@@ -9,10 +9,16 @@ contextBridge.exposeInMainWorld('api', {
   pinClip: (id: number) => ipcRenderer.invoke('clips:pin', id),
   unpinClip: (id: number) => ipcRenderer.invoke('clips:unpin', id),
   exportClips: () => ipcRenderer.invoke('clips:export'),
+  getClipCount: () => ipcRenderer.invoke('clips:count'),
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+  saveSettings: (update: Record<string, unknown>) => ipcRenderer.invoke('settings:save', update),
   onClipboardChanged: (callback: (clip: unknown) => void) => {
     ipcRenderer.on('clipboard:changed', (_event, clip) => callback(clip));
   },
   onRefresh: (callback: () => void) => {
     ipcRenderer.on('clips:refresh', () => callback());
+  },
+  onSettingsOpen: (callback: () => void) => {
+    ipcRenderer.on('settings:open', () => callback());
   },
 });

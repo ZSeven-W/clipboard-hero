@@ -2,8 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import { app } from 'electron';
 import crypto from 'crypto';
-
-export const MAX_CLIPS = 1000;
+import { getSettings } from './settings';
 
 export interface Clip {
   id: number;
@@ -49,13 +48,18 @@ export function initDatabase(): void {
   }
 }
 
+export function getClipCount(): number {
+  return (db.prepare('SELECT COUNT(*) as cnt FROM clips').get() as { cnt: number }).cnt;
+}
+
 function pruneOldClips(): void {
+  const maxClips = getSettings().maxClips;
   const unpinnedCount = (
     db.prepare('SELECT COUNT(*) as cnt FROM clips WHERE pinned = 0').get() as { cnt: number }
   ).cnt;
 
-  if (unpinnedCount > MAX_CLIPS) {
-    const excess = unpinnedCount - MAX_CLIPS;
+  if (unpinnedCount > maxClips) {
+    const excess = unpinnedCount - maxClips;
     db.prepare(
       `DELETE FROM clips WHERE pinned = 0 AND id IN (
         SELECT id FROM clips WHERE pinned = 0 ORDER BY created_at ASC LIMIT ?

@@ -9,6 +9,17 @@ const clipList = document.getElementById('clip-list') as HTMLDivElement;
 const previewPanel = document.getElementById('preview-panel') as HTMLDivElement;
 const previewContent = document.getElementById('preview-content') as HTMLPreElement;
 const categoryTabs = document.querySelectorAll('.category-tab');
+const clipCountEl = document.getElementById('clip-count') as HTMLSpanElement;
+
+// Settings elements
+const settingsBtn = document.getElementById('settings-btn') as HTMLButtonElement;
+const settingsOverlay = document.getElementById('settings-overlay') as HTMLDivElement;
+const settingsClose = document.getElementById('settings-close') as HTMLButtonElement;
+const settingsSave = document.getElementById('settings-save') as HTMLButtonElement;
+const settingsCancel = document.getElementById('settings-cancel') as HTMLButtonElement;
+const settingMaxClips = document.getElementById('setting-max-clips') as HTMLInputElement;
+const settingPolling = document.getElementById('setting-polling') as HTMLSelectElement;
+const settingLaunchLogin = document.getElementById('setting-launch-login') as HTMLInputElement;
 
 // ── Data loading ──
 
@@ -22,6 +33,12 @@ async function loadClips(): Promise<void> {
   }
 
   renderClips();
+  updateStatusBar();
+}
+
+async function updateStatusBar(): Promise<void> {
+  const count = await window.api.getClipCount();
+  clipCountEl.textContent = `${count} clip${count !== 1 ? 's' : ''}`;
 }
 
 // ── Rendering ──
@@ -167,6 +184,45 @@ function formatTime(dateStr: string): string {
   return date.toLocaleDateString();
 }
 
+// ── Settings modal ──
+
+function openSettings(): void {
+  window.api.getSettings().then((settings) => {
+    settingMaxClips.value = String(settings.maxClips);
+    settingPolling.value = String(settings.pollingInterval);
+    settingLaunchLogin.checked = settings.launchAtLogin;
+    settingsOverlay.classList.add('visible');
+  });
+}
+
+function closeSettings(): void {
+  settingsOverlay.classList.remove('visible');
+}
+
+settingsBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  openSettings();
+});
+
+settingsClose.addEventListener('click', closeSettings);
+settingsCancel.addEventListener('click', closeSettings);
+
+settingsOverlay.addEventListener('click', (e) => {
+  if (e.target === settingsOverlay) closeSettings();
+});
+
+settingsSave.addEventListener('click', async () => {
+  await window.api.saveSettings({
+    maxClips: parseInt(settingMaxClips.value, 10) || 1000,
+    pollingInterval: parseInt(settingPolling.value, 10) || 500,
+    launchAtLogin: settingLaunchLogin.checked,
+  });
+  closeSettings();
+});
+
+// Listen for settings open from tray menu
+window.api.onSettingsOpen(() => openSettings());
+
 // ── Event handlers ──
 
 categoryTabs.forEach((tab) => {
@@ -189,10 +245,18 @@ searchInput.addEventListener('input', () => {
 });
 
 document.addEventListener('keydown', (e) => {
+  // Close settings on Escape if open
   if (e.key === 'Escape') {
+    if (settingsOverlay.classList.contains('visible')) {
+      closeSettings();
+      return;
+    }
     window.close();
     return;
   }
+
+  // Don't process shortcuts when settings modal is open
+  if (settingsOverlay.classList.contains('visible')) return;
 
   // Only handle navigation keys when not typing in search
   const inSearch = document.activeElement === searchInput;
@@ -234,6 +298,15 @@ document.addEventListener('keydown', (e) => {
       focusedIndex = Math.max(0, currentClips.length - 2);
     }
     window.api.deleteClip(clip.id).then(() => loadClips());
+    return;
+  }
+
+  // P to toggle pin on focused item (when not in search)
+  if (e.key === 'p' && !inSearch && focusedIndex >= 0 && focusedIndex < currentClips.length) {
+    e.preventDefault();
+    const clip = currentClips[focusedIndex];
+    const action = clip.pinned ? window.api.unpinClip(clip.id) : window.api.pinClip(clip.id);
+    action.then(() => loadClips());
     return;
   }
 });

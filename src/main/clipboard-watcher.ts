@@ -12,7 +12,7 @@ export function skipNextChange(): void {
   skipNext = true;
 }
 
-export function startWatching(onChange: (clip: Clip) => void): void {
+export function startWatching(onChange: (clip: Clip) => void, interval = 500): void {
   onChangeCallback = onChange;
   lastContent = clipboard.readText();
 
@@ -33,7 +33,14 @@ export function startWatching(onChange: (clip: Clip) => void): void {
     if (clip && onChangeCallback) {
       onChangeCallback(clip);
     }
-  }, 500);
+  }, interval);
+}
+
+export function updateInterval(newInterval: number): void {
+  if (onChangeCallback) {
+    stopWatching();
+    startWatching(onChangeCallback, newInterval);
+  }
 }
 
 export function stopWatching(): void {

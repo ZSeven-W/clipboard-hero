@@ -10,7 +10,10 @@
 <body>
   <div class="titlebar" id="titlebar">
     <span class="title">ClipboardHero</span>
-    <span class="shortcut-hint">Cmd+Shift+V</span>
+    <div class="titlebar-actions">
+      <button id="settings-btn" class="titlebar-btn" title="Settings">&#9881;</button>
+      <span class="shortcut-hint">Cmd+Shift+V</span>
+    </div>
   </div>
 
   <div class="search-bar">
@@ -30,6 +33,46 @@
     <div id="clip-list" class="clip-list"></div>
     <div id="preview-panel" class="preview-panel">
       <pre id="preview-content"></pre>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <span id="clip-count">0 clips</span>
+    <span id="status-info"></span>
+  </div>
+
+  <!-- Settings modal -->
+  <div id="settings-overlay" class="settings-overlay">
+    <div class="settings-modal">
+      <div class="settings-header">
+        <span>Settings</span>
+        <button id="settings-close" class="settings-close">&times;</button>
+      </div>
+      <div class="settings-body">
+        <div class="settings-group">
+          <label for="setting-max-clips">Max history size</label>
+          <input type="number" id="setting-max-clips" min="100" max="10000" step="100">
+        </div>
+        <div class="settings-group">
+          <label for="setting-polling">Polling interval</label>
+          <select id="setting-polling">
+            <option value="250">250ms (fast)</option>
+            <option value="500">500ms (default)</option>
+            <option value="1000">1s (battery saver)</option>
+            <option value="2000">2s (minimal)</option>
+          </select>
+        </div>
+        <div class="settings-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="setting-launch-login">
+            Launch at login
+          </label>
+        </div>
+      </div>
+      <div class="settings-footer">
+        <button id="settings-cancel" class="btn-secondary">Cancel</button>
+        <button id="settings-save" class="btn-primary">Save</button>
+      </div>
     </div>
   </div>
 
