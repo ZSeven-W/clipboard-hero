@@ -17,8 +17,8 @@ export interface Clip {
 
 let db: Database.Database;
 
-export function initDatabase(): void {
-  const dbPath = path.join(app.getPath('userData'), 'clipboard-hero.db');
+export function initDatabase(customDbPath?: string): void {
+  const dbPath = customDbPath ?? path.join(app.getPath('userData'), 'clipboard-hero.db');
   db = new Database(dbPath);
   db.pragma('journal_mode = WAL');
 
