@@ -29,11 +29,12 @@ describe('loadSettings', () => {
       maxClips: 1000,
       pollingInterval: 500,
       launchAtLogin: false,
+      retentionDays: 30,
     });
   });
 
   it('loads settings from file', () => {
-    const custom: Settings = { maxClips: 500, pollingInterval: 250, launchAtLogin: true };
+    const custom: Settings = { maxClips: 500, pollingInterval: 250, launchAtLogin: true, retentionDays: 14 };
     fs.writeFileSync(path.join(settingsDir, 'settings.json'), JSON.stringify(custom));
 
     const settings = loadSettings();
@@ -59,6 +60,7 @@ describe('loadSettings', () => {
       maxClips: 1000,
       pollingInterval: 500,
       launchAtLogin: false,
+      retentionDays: 30,
     });
   });
 });
@@ -110,6 +112,7 @@ describe('getSettings', () => {
       maxClips: 1000,
       pollingInterval: 500,
       launchAtLogin: false,
+      retentionDays: 30,
     });
   });
 

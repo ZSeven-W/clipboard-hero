@@ -6,12 +6,14 @@ export interface Settings {
   maxClips: number;
   pollingInterval: number;
   launchAtLogin: boolean;
+  retentionDays: number; // 0 = keep forever
 }
 
 const DEFAULTS: Settings = {
   maxClips: 1000,
   pollingInterval: 500,
   launchAtLogin: false,
+  retentionDays: 30,
 };
 
 let current: Settings = { ...DEFAULTS };

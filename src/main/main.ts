@@ -25,6 +25,8 @@ import {
   getAllClips,
   getClipCount,
   importClips,
+  pruneExpiredClips,
+  updateClipContent,
 } from './database';
 import { startWatching, stopWatching, skipNextChange, updateInterval } from './clipboard-watcher';
 import { loadSettings, getSettings, saveSettings, Settings } from './settings';
@@ -181,7 +183,8 @@ function setupIPC(): void {
   ipcMain.handle('clips:pin', (_event, id: number) => pinClip(id));
   ipcMain.handle('clips:unpin', (_event, id: number) => unpinClip(id));
   ipcMain.handle('clips:export', () => getAllClips());
-  ipcMain.handle('clips:import', (_event, clips: Array<Record<string, unknown>>) => importClips(clips));
+  ipcMain.handle('clips:import', (_event, clips: Array<Record<string, unknown>>) =>
+    importClips(clips as Array<{ content: string; category?: string; pinned?: number; copy_count?: number; created_at?: string }>));
 
   ipcMain.handle('clips:copy', (_event, id: number) => {
     const clip = getClipById(id);
@@ -190,6 +193,10 @@ function setupIPC(): void {
       clipboard.writeText(clip.content);
       incrementCopyCount(id);
     }
+  });
+
+  ipcMain.handle('clips:update', (_event, id: number, newContent: string) => {
+    return updateClipContent(id, newContent);
   });
 
   ipcMain.handle('clips:count', () => getClipCount());
@@ -229,6 +236,10 @@ app.whenReady().then(() => {
   startWatching((clip) => {
     mainWindow?.webContents.send('clipboard:changed', clip);
   }, settings.pollingInterval);
+
+  // Prune expired clips on startup and every hour
+  pruneExpiredClips();
+  setInterval(() => pruneExpiredClips(), 60 * 60 * 1000);
 });
 
 app.on('before-quit', () => {

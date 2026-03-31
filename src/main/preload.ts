@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('api', {
   unpinClip: (id: number) => ipcRenderer.invoke('clips:unpin', id),
   exportClips: () => ipcRenderer.invoke('clips:export'),
   importClips: (clips: Array<Record<string, unknown>>) => ipcRenderer.invoke('clips:import', clips),
+  updateClip: (id: number, newContent: string) => ipcRenderer.invoke('clips:update', id, newContent),
   getClipCount: () => ipcRenderer.invoke('clips:count'),
   getSettings: () => ipcRenderer.invoke('settings:get'),
   saveSettings: (update: Record<string, unknown>) => ipcRenderer.invoke('settings:save', update),

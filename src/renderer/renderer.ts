@@ -19,6 +19,7 @@ const settingsSave = document.getElementById('settings-save') as HTMLButtonEleme
 const settingsCancel = document.getElementById('settings-cancel') as HTMLButtonElement;
 const settingMaxClips = document.getElementById('setting-max-clips') as HTMLInputElement;
 const settingPolling = document.getElementById('setting-polling') as HTMLSelectElement;
+const settingRetention = document.getElementById('setting-retention') as HTMLSelectElement;
 const settingLaunchLogin = document.getElementById('setting-launch-login') as HTMLInputElement;
 
 // ── Data loading ──
@@ -114,6 +115,16 @@ function createClipElement(clip: ClipItem, index: number): HTMLDivElement {
     meta.appendChild(countBadge);
   }
 
+  // Edit button
+  const editBtn = document.createElement('button');
+  editBtn.className = 'clip-edit';
+  editBtn.title = 'Edit';
+  editBtn.textContent = '\u270E'; // ✎
+  editBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    startEditing(item, clip, index);
+  });
+
   // Pin button
   const pinBtn = document.createElement('button');
   pinBtn.className = 'clip-pin';
@@ -148,6 +159,7 @@ function createClipElement(clip: ClipItem, index: number): HTMLDivElement {
 
   item.appendChild(preview);
   item.appendChild(meta);
+  item.appendChild(editBtn);
   item.appendChild(pinBtn);
   item.appendChild(deleteBtn);
 
@@ -172,6 +184,91 @@ function createClipElement(clip: ClipItem, index: number): HTMLDivElement {
   return item;
 }
 
+// ── Inline editing ──
+
+function startEditing(item: HTMLDivElement, clip: ClipItem, index: number): void {
+  // Prevent duplicate edit state
+  if (item.querySelector('.clip-edit-area')) return;
+
+  item.classList.add('editing');
+
+  const textarea = document.createElement('textarea');
+  textarea.className = 'clip-edit-area';
+  textarea.value = clip.content;
+  textarea.rows = Math.min(clip.content.split('\n').length + 1, 6);
+
+  const actions = document.createElement('div');
+  actions.className = 'clip-edit-actions';
+
+  const saveBtn = document.createElement('button');
+  saveBtn.className = 'btn-primary btn-sm';
+  saveBtn.textContent = 'Save';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn-secondary btn-sm';
+  cancelBtn.textContent = 'Cancel';
+
+  actions.appendChild(cancelBtn);
+  actions.appendChild(saveBtn);
+
+  // Hide the preview row while editing
+  const preview = item.querySelector('.clip-preview') as HTMLDivElement;
+  preview.style.display = 'none';
+
+  item.appendChild(textarea);
+  item.appendChild(actions);
+  textarea.focus();
+  textarea.select();
+
+  const stopEditing = () => {
+    item.classList.remove('editing');
+    textarea.remove();
+    actions.remove();
+    preview.style.display = '';
+  };
+
+  cancelBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    stopEditing();
+  });
+
+  saveBtn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const newContent = textarea.value.trim();
+    if (!newContent || newContent === clip.content) {
+      stopEditing();
+      return;
+    }
+    const result = await window.api.updateClip(clip.id, newContent);
+    if (result) {
+      focusedIndex = index;
+      await loadClips();
+    } else {
+      // Duplicate or error — flash red
+      textarea.classList.add('error');
+      setTimeout(() => textarea.classList.remove('error'), 600);
+    }
+  });
+
+  textarea.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      stopEditing();
+    }
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.stopPropagation();
+      saveBtn.click();
+    }
+  });
+
+  // Prevent the item's click-to-copy while editing
+  item.addEventListener('click', (e) => {
+    if (item.classList.contains('editing')) {
+      e.stopImmediatePropagation();
+    }
+  }, { capture: true });
+}
+
 // ── Helpers ──
 
 function formatTime(dateStr: string): string {
@@ -190,6 +287,7 @@ function openSettings(): void {
   window.api.getSettings().then((settings) => {
     settingMaxClips.value = String(settings.maxClips);
     settingPolling.value = String(settings.pollingInterval);
+    settingRetention.value = String(settings.retentionDays);
     settingLaunchLogin.checked = settings.launchAtLogin;
     settingsOverlay.classList.add('visible');
   });
@@ -215,6 +313,7 @@ settingsSave.addEventListener('click', async () => {
   await window.api.saveSettings({
     maxClips: parseInt(settingMaxClips.value, 10) || 1000,
     pollingInterval: parseInt(settingPolling.value, 10) || 500,
+    retentionDays: parseInt(settingRetention.value, 10) || 0,
     launchAtLogin: settingLaunchLogin.checked,
   });
   closeSettings();
@@ -307,6 +406,16 @@ document.addEventListener('keydown', (e) => {
     const clip = currentClips[focusedIndex];
     const action = clip.pinned ? window.api.unpinClip(clip.id) : window.api.pinClip(clip.id);
     action.then(() => loadClips());
+    return;
+  }
+
+  // E to edit focused item (when not in search)
+  if (e.key === 'e' && !inSearch && focusedIndex >= 0 && focusedIndex < currentClips.length) {
+    e.preventDefault();
+    const clip = currentClips[focusedIndex];
+    const items = clipList.querySelectorAll<HTMLDivElement>('.clip-item');
+    const el = items[focusedIndex];
+    if (el) startEditing(el, clip, focusedIndex);
     return;
   }
 });

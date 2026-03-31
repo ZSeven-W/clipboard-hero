@@ -13,6 +13,7 @@ interface AppSettings {
   maxClips: number;
   pollingInterval: number;
   launchAtLogin: boolean;
+  retentionDays: number;
 }
 
 interface ClipboardAPI {
@@ -24,6 +25,7 @@ interface ClipboardAPI {
   pinClip(id: number): Promise<void>;
   unpinClip(id: number): Promise<void>;
   exportClips(): Promise<ClipItem[]>;
+  updateClip(id: number, newContent: string): Promise<ClipItem | null>;
   getClipCount(): Promise<number>;
   getSettings(): Promise<AppSettings>;
   saveSettings(update: Partial<AppSettings>): Promise<AppSettings>;

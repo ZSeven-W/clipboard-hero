@@ -10,12 +10,22 @@ vi.mock('electron', () => ({
   },
 }));
 
-// Mock settings to control maxClips in pruning tests
+// Mock classifier for updateClipContent
+vi.mock('../classifier', () => ({
+  classify: vi.fn((content: string) => {
+    if (content.startsWith('http')) return 'url';
+    if (content.includes('@') && content.includes('.')) return 'email';
+    return 'text';
+  }),
+}));
+
+// Mock settings to control maxClips and retentionDays in pruning tests
 vi.mock('../settings', () => ({
-  getSettings: () => ({ maxClips: mockMaxClips, pollingInterval: 500, launchAtLogin: false }),
+  getSettings: () => ({ maxClips: mockMaxClips, pollingInterval: 500, launchAtLogin: false, retentionDays: mockRetentionDays }),
 }));
 
 let mockMaxClips = 1000;
+let mockRetentionDays = 30;
 
 import {
   initDatabase,
@@ -31,6 +41,8 @@ import {
   getAllClips,
   getClipCount,
   importClips,
+  pruneExpiredClips,
+  updateClipContent,
   closeDatabase,
 } from '../database';
 
@@ -40,6 +52,7 @@ beforeEach(() => {
   dbPath = path.join(os.tmpdir(), `clipboard-hero-test-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
   initDatabase(dbPath);
   mockMaxClips = 1000;
+  mockRetentionDays = 30;
 });
 
 afterEach(() => {
@@ -336,5 +349,117 @@ describe('importClips', () => {
     expect(result.imported).toBe(0);
     expect(result.skipped).toBe(0);
     expect(result.total).toBe(0);
+  });
+});
+
+describe('pruneExpiredClips', () => {
+  it('deletes unpinned clips older than retentionDays', () => {
+    mockRetentionDays = 7;
+    // Insert a clip and manually backdate it via raw SQL
+    const clip = insertClip('old-clip', 'text');
+    // We need to access the db directly — use importClips with old date instead
+    importClips([{ content: 'ancient-clip', category: 'text', created_at: '2020-01-01 00:00:00' }]);
+    const before = getClipCount();
+    expect(before).toBe(2);
+
+    const deleted = pruneExpiredClips();
+    expect(deleted).toBe(1);
+    expect(getClipCount()).toBe(1);
+  });
+
+  it('does not delete pinned clips even if expired', () => {
+    mockRetentionDays = 7;
+    importClips([{ content: 'old-pinned', category: 'text', created_at: '2020-01-01 00:00:00', pinned: 1 }]);
+
+    const deleted = pruneExpiredClips();
+    expect(deleted).toBe(0);
+    expect(getClipCount()).toBe(1);
+  });
+
+  it('does nothing when retentionDays is 0 (keep forever)', () => {
+    mockRetentionDays = 0;
+    importClips([{ content: 'forever-clip', category: 'text', created_at: '2020-01-01 00:00:00' }]);
+
+    const deleted = pruneExpiredClips();
+    expect(deleted).toBe(0);
+    expect(getClipCount()).toBe(1);
+  });
+
+  it('does not delete recent clips', () => {
+    mockRetentionDays = 30;
+    insertClip('fresh-clip', 'text');
+
+    const deleted = pruneExpiredClips();
+    expect(deleted).toBe(0);
+    expect(getClipCount()).toBe(1);
+  });
+
+  it('returns the number of deleted clips', () => {
+    mockRetentionDays = 1;
+    importClips([
+      { content: 'old-1', category: 'text', created_at: '2020-01-01 00:00:00' },
+      { content: 'old-2', category: 'text', created_at: '2020-01-02 00:00:00' },
+      { content: 'old-3', category: 'text', created_at: '2020-01-03 00:00:00' },
+    ]);
+
+    const deleted = pruneExpiredClips();
+    expect(deleted).toBe(3);
+    expect(getClipCount()).toBe(0);
+  });
+});
+
+describe('updateClipContent', () => {
+  it('updates content, preview, hash, and category', () => {
+    const clip = insertClip('original text', 'text');
+    const updated = updateClipContent(clip!.id, 'https://example.com');
+    expect(updated).not.toBeNull();
+    expect(updated!.content).toBe('https://example.com');
+    expect(updated!.category).toBe('url');
+    expect(updated!.preview).toBe('https://example.com');
+  });
+
+  it('returns null for nonexistent id', () => {
+    expect(updateClipContent(99999, 'new')).toBeNull();
+  });
+
+  it('returns null when new content duplicates another clip', () => {
+    insertClip('existing content', 'text');
+    const clip2 = insertClip('will change', 'text');
+    const result = updateClipContent(clip2!.id, 'existing content');
+    expect(result).toBeNull();
+    // Original content should be unchanged
+    const found = getClipById(clip2!.id);
+    expect(found!.content).toBe('will change');
+  });
+
+  it('preserves pinned state and copy_count after update', () => {
+    const clip = insertClip('pin me', 'text');
+    pinClip(clip!.id);
+    incrementCopyCount(clip!.id);
+    incrementCopyCount(clip!.id);
+
+    const updated = updateClipContent(clip!.id, 'updated pinned');
+    expect(updated!.pinned).toBe(1);
+    expect(updated!.copy_count).toBe(2);
+  });
+
+  it('allows updating to same content (same hash, same id)', () => {
+    const clip = insertClip('same content', 'text');
+    const updated = updateClipContent(clip!.id, 'same content');
+    expect(updated).not.toBeNull();
+    expect(updated!.content).toBe('same content');
+  });
+
+  it('truncates preview to 200 chars', () => {
+    const clip = insertClip('short', 'text');
+    const longContent = 'B'.repeat(300);
+    const updated = updateClipContent(clip!.id, longContent);
+    expect(updated!.preview.length).toBe(200);
+  });
+
+  it('re-classifies email content', () => {
+    const clip = insertClip('plain text', 'text');
+    const updated = updateClipContent(clip!.id, 'user@example.com');
+    expect(updated!.category).toBe('email');
   });
 });

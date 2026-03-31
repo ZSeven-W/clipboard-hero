@@ -3,6 +3,7 @@ import path from 'path';
 import { app } from 'electron';
 import crypto from 'crypto';
 import { getSettings } from './settings';
+import { classify } from './classifier';
 
 export interface Clip {
   id: number;
@@ -182,6 +183,36 @@ export function importClips(
   transaction();
 
   return { imported, skipped, total: clips.length };
+}
+
+export function pruneExpiredClips(): number {
+  const retentionDays = getSettings().retentionDays;
+  if (retentionDays <= 0) return 0;
+
+  const result = db.prepare(
+    `DELETE FROM clips WHERE pinned = 0 AND created_at < datetime('now', '-' || ? || ' days')`
+  ).run(retentionDays);
+
+  return result.changes;
+}
+
+export function updateClipContent(id: number, newContent: string): Clip | null {
+  const existing = getClipById(id);
+  if (!existing) return null;
+
+  const newCategory = classify(newContent);
+  const newHash = crypto.createHash('md5').update(newContent).digest('hex');
+  const newPreview = newContent.substring(0, 200);
+
+  // Check for duplicate: if another clip already has this content, bail
+  const duplicate = db.prepare('SELECT id FROM clips WHERE hash = ? AND id != ?').get(newHash, id) as { id: number } | undefined;
+  if (duplicate) return null;
+
+  db.prepare(
+    'UPDATE clips SET content = ?, category = ?, preview = ?, hash = ? WHERE id = ?'
+  ).run(newContent, newCategory, newPreview, newHash, id);
+
+  return getClipById(id) ?? null;
 }
 
 export function closeDatabase(): void {
