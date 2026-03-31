@@ -11,6 +11,7 @@
   <div class="titlebar" id="titlebar">
     <span class="title">ClipboardHero</span>
     <div class="titlebar-actions">
+      <button id="stats-btn" class="titlebar-btn" title="Statistics">&#9776;</button>
       <button id="settings-btn" class="titlebar-btn" title="Settings">&#9881;</button>
       <span class="shortcut-hint">Cmd+Shift+V</span>
     </div>
@@ -84,6 +85,19 @@
       <div class="settings-footer">
         <button id="settings-cancel" class="btn-secondary">Cancel</button>
         <button id="settings-save" class="btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats modal -->
+  <div id="stats-overlay" class="settings-overlay">
+    <div class="settings-modal stats-modal">
+      <div class="settings-header">
+        <span>Statistics</span>
+        <button id="stats-close" class="settings-close">&times;</button>
+      </div>
+      <div class="settings-body" id="stats-body">
+        <!-- Populated by renderer.ts -->
       </div>
     </div>
   </div>

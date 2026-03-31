@@ -16,6 +16,32 @@ interface AppSettings {
   retentionDays: number;
 }
 
+interface CategoryCount {
+  category: string;
+  count: number;
+}
+
+interface TopClip {
+  id: number;
+  preview: string;
+  category: string;
+  copy_count: number;
+}
+
+interface DailyActivity {
+  date: string;
+  count: number;
+}
+
+interface ClipStatistics {
+  totalClips: number;
+  pinnedClips: number;
+  totalCopies: number;
+  categoryBreakdown: CategoryCount[];
+  topCopied: TopClip[];
+  recentActivity: DailyActivity[];
+}
+
 interface ClipboardAPI {
   getClips(category?: string): Promise<ClipItem[]>;
   searchClips(query: string): Promise<ClipItem[]>;
@@ -27,6 +53,7 @@ interface ClipboardAPI {
   exportClips(): Promise<ClipItem[]>;
   updateClip(id: number, newContent: string): Promise<ClipItem | null>;
   getClipCount(): Promise<number>;
+  getStats(): Promise<ClipStatistics>;
   getSettings(): Promise<AppSettings>;
   saveSettings(update: Partial<AppSettings>): Promise<AppSettings>;
   onClipboardChanged(callback: (clip: ClipItem) => void): void;

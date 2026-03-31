@@ -215,6 +215,69 @@ export function updateClipContent(id: number, newContent: string): Clip | null {
   return getClipById(id) ?? null;
 }
 
+export interface CategoryCount {
+  category: string;
+  count: number;
+}
+
+export interface TopClip {
+  id: number;
+  preview: string;
+  category: string;
+  copy_count: number;
+}
+
+export interface DailyActivity {
+  date: string;
+  count: number;
+}
+
+export interface Statistics {
+  totalClips: number;
+  pinnedClips: number;
+  totalCopies: number;
+  categoryBreakdown: CategoryCount[];
+  topCopied: TopClip[];
+  recentActivity: DailyActivity[];
+}
+
+export function getStatistics(): Statistics {
+  const totalClips = getClipCount();
+
+  const pinnedClips = (
+    db.prepare('SELECT COUNT(*) as cnt FROM clips WHERE pinned = 1').get() as { cnt: number }
+  ).cnt;
+
+  const totalCopies = (
+    db.prepare('SELECT COALESCE(SUM(copy_count), 0) as total FROM clips').get() as { total: number }
+  ).total;
+
+  const categoryBreakdown = db.prepare(
+    'SELECT category, COUNT(*) as count FROM clips GROUP BY category ORDER BY count DESC'
+  ).all() as CategoryCount[];
+
+  const topCopied = db.prepare(
+    'SELECT id, preview, category, copy_count FROM clips WHERE copy_count > 0 ORDER BY copy_count DESC LIMIT 5'
+  ).all() as TopClip[];
+
+  const recentActivity = db.prepare(
+    `SELECT DATE(created_at) as date, COUNT(*) as count
+     FROM clips
+     WHERE created_at >= datetime('now', '-6 days')
+     GROUP BY DATE(created_at)
+     ORDER BY date ASC`
+  ).all() as DailyActivity[];
+
+  return {
+    totalClips,
+    pinnedClips,
+    totalCopies,
+    categoryBreakdown,
+    topCopied,
+    recentActivity,
+  };
+}
+
 export function closeDatabase(): void {
   if (db) db.close();
 }

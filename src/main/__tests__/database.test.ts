@@ -43,6 +43,7 @@ import {
   importClips,
   pruneExpiredClips,
   updateClipContent,
+  getStatistics,
   closeDatabase,
 } from '../database';
 
@@ -461,5 +462,120 @@ describe('updateClipContent', () => {
     const clip = insertClip('plain text', 'text');
     const updated = updateClipContent(clip!.id, 'user@example.com');
     expect(updated!.category).toBe('email');
+  });
+});
+
+describe('getStatistics', () => {
+  it('returns zeros for an empty database', () => {
+    const stats = getStatistics();
+    expect(stats.totalClips).toBe(0);
+    expect(stats.pinnedClips).toBe(0);
+    expect(stats.totalCopies).toBe(0);
+    expect(stats.categoryBreakdown).toEqual([]);
+    expect(stats.topCopied).toEqual([]);
+    expect(stats.recentActivity).toEqual([]);
+  });
+
+  it('returns correct totalClips count', () => {
+    insertClip('one', 'text');
+    insertClip('two', 'code');
+    insertClip('three', 'url');
+    const stats = getStatistics();
+    expect(stats.totalClips).toBe(3);
+  });
+
+  it('returns correct pinnedClips count', () => {
+    const a = insertClip('a', 'text');
+    const b = insertClip('b', 'text');
+    insertClip('c', 'text');
+    pinClip(a!.id);
+    pinClip(b!.id);
+    const stats = getStatistics();
+    expect(stats.pinnedClips).toBe(2);
+  });
+
+  it('returns correct totalCopies sum', () => {
+    const clip1 = insertClip('clip1', 'text');
+    const clip2 = insertClip('clip2', 'text');
+    incrementCopyCount(clip1!.id);
+    incrementCopyCount(clip1!.id);
+    incrementCopyCount(clip1!.id);
+    incrementCopyCount(clip2!.id);
+    const stats = getStatistics();
+    expect(stats.totalCopies).toBe(4);
+  });
+
+  it('returns category breakdown sorted by count descending', () => {
+    insertClip('text1', 'text');
+    insertClip('text2', 'text');
+    insertClip('text3', 'text');
+    insertClip('code1', 'code');
+    insertClip('code2', 'code');
+    insertClip('url1', 'url');
+    const stats = getStatistics();
+    expect(stats.categoryBreakdown.length).toBe(3);
+    expect(stats.categoryBreakdown[0]).toEqual({ category: 'text', count: 3 });
+    expect(stats.categoryBreakdown[1]).toEqual({ category: 'code', count: 2 });
+    expect(stats.categoryBreakdown[2]).toEqual({ category: 'url', count: 1 });
+  });
+
+  it('returns top copied clips ordered by copy_count descending', () => {
+    const a = insertClip('alpha', 'text');
+    const b = insertClip('beta', 'text');
+    const c = insertClip('gamma', 'text');
+    incrementCopyCount(b!.id);
+    incrementCopyCount(b!.id);
+    incrementCopyCount(b!.id);
+    incrementCopyCount(a!.id);
+    // c has 0 copies, should not appear
+    const stats = getStatistics();
+    expect(stats.topCopied.length).toBe(2);
+    expect(stats.topCopied[0].copy_count).toBe(3);
+    expect(stats.topCopied[0].preview).toBe('beta');
+    expect(stats.topCopied[1].copy_count).toBe(1);
+  });
+
+  it('limits top copied to 5 entries', () => {
+    for (let i = 0; i < 8; i++) {
+      const clip = insertClip(`clip-${i}`, 'text');
+      incrementCopyCount(clip!.id);
+    }
+    const stats = getStatistics();
+    expect(stats.topCopied.length).toBe(5);
+  });
+
+  it('excludes zero-copy clips from topCopied', () => {
+    insertClip('no copies', 'text');
+    const stats = getStatistics();
+    expect(stats.topCopied.length).toBe(0);
+  });
+
+  it('returns recent activity grouped by date', () => {
+    // Clips inserted with CURRENT_TIMESTAMP will be today
+    insertClip('today-1', 'text');
+    insertClip('today-2', 'text');
+    const stats = getStatistics();
+    expect(stats.recentActivity.length).toBeGreaterThanOrEqual(1);
+    const todayEntry = stats.recentActivity[stats.recentActivity.length - 1];
+    expect(todayEntry.count).toBe(2);
+  });
+
+  it('does not include activity older than 7 days', () => {
+    // Import a clip with old date
+    importClips([{ content: 'ancient', category: 'text', created_at: '2020-01-01 00:00:00' }]);
+    const stats = getStatistics();
+    // The ancient clip should not appear in recentActivity
+    const ancientEntry = stats.recentActivity.find((d) => d.date === '2020-01-01');
+    expect(ancientEntry).toBeUndefined();
+    // But it should still count in totalClips
+    expect(stats.totalClips).toBe(1);
+  });
+
+  it('includes category and id in topCopied entries', () => {
+    const clip = insertClip('http://example.com', 'url');
+    incrementCopyCount(clip!.id);
+    const stats = getStatistics();
+    expect(stats.topCopied[0].id).toBe(clip!.id);
+    expect(stats.topCopied[0].category).toBe('url');
   });
 });

@@ -27,6 +27,7 @@ import {
   importClips,
   pruneExpiredClips,
   updateClipContent,
+  getStatistics,
 } from './database';
 import { startWatching, stopWatching, skipNextChange, updateInterval } from './clipboard-watcher';
 import { loadSettings, getSettings, saveSettings, Settings } from './settings';
@@ -200,6 +201,7 @@ function setupIPC(): void {
   });
 
   ipcMain.handle('clips:count', () => getClipCount());
+  ipcMain.handle('clips:stats', () => getStatistics());
 
   ipcMain.handle('settings:get', () => getSettings());
   ipcMain.handle('settings:save', (_event, update: Partial<Settings>) => {

@@ -322,6 +322,118 @@ settingsSave.addEventListener('click', async () => {
 // Listen for settings open from tray menu
 window.api.onSettingsOpen(() => openSettings());
 
+// ── Stats modal ──
+
+const statsBtn = document.getElementById('stats-btn') as HTMLButtonElement;
+const statsOverlay = document.getElementById('stats-overlay') as HTMLDivElement;
+const statsClose = document.getElementById('stats-close') as HTMLButtonElement;
+const statsBody = document.getElementById('stats-body') as HTMLDivElement;
+
+async function openStats(): Promise<void> {
+  const stats: ClipStatistics = await window.api.getStats();
+  statsBody.innerHTML = '';
+
+  if (stats.totalClips === 0) {
+    statsBody.innerHTML = '<div class="stats-empty">No clips yet. Copy something to see statistics!</div>';
+    statsOverlay.classList.add('visible');
+    return;
+  }
+
+  // Overview cards
+  const overview = document.createElement('div');
+  overview.className = 'stats-section';
+  overview.innerHTML = `
+    <div class="stats-section-title">Overview</div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-value">${stats.totalClips}</div><div class="stat-label">Total</div></div>
+      <div class="stat-card"><div class="stat-value">${stats.pinnedClips}</div><div class="stat-label">Pinned</div></div>
+      <div class="stat-card"><div class="stat-value">${stats.totalCopies}</div><div class="stat-label">Copies</div></div>
+    </div>
+  `;
+  statsBody.appendChild(overview);
+
+  // Category breakdown
+  if (stats.categoryBreakdown.length > 0) {
+    const maxCount = Math.max(...stats.categoryBreakdown.map((c) => c.count));
+    const catSection = document.createElement('div');
+    catSection.className = 'stats-section';
+    const barsHtml = stats.categoryBreakdown
+      .map(
+        (c) => `
+      <div class="category-bar">
+        <span class="category-bar-label">${c.category}</span>
+        <div class="category-bar-track">
+          <div class="category-bar-fill bar-${c.category}" style="width: ${(c.count / maxCount) * 100}%"></div>
+        </div>
+        <span class="category-bar-count">${c.count}</span>
+      </div>`
+      )
+      .join('');
+    catSection.innerHTML = `<div class="stats-section-title">Categories</div>${barsHtml}`;
+    statsBody.appendChild(catSection);
+  }
+
+  // Top copied
+  if (stats.topCopied.length > 0) {
+    const topSection = document.createElement('div');
+    topSection.className = 'stats-section';
+    const topHtml = stats.topCopied
+      .map(
+        (c, i) => `
+      <div class="top-clip">
+        <span class="top-clip-rank">${i + 1}</span>
+        <span class="top-clip-preview">${escapeHtml(c.preview.substring(0, 60))}</span>
+        <span class="top-clip-count">${c.copy_count}\u00d7</span>
+      </div>`
+      )
+      .join('');
+    topSection.innerHTML = `<div class="stats-section-title">Most Copied</div>${topHtml}`;
+    statsBody.appendChild(topSection);
+  }
+
+  // Recent activity (last 7 days)
+  if (stats.recentActivity.length > 0) {
+    const maxDay = Math.max(...stats.recentActivity.map((d) => d.count));
+    const actSection = document.createElement('div');
+    actSection.className = 'stats-section';
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const barsHtml = stats.recentActivity
+      .map((d) => {
+        const pct = maxDay > 0 ? (d.count / maxDay) * 100 : 0;
+        const dayLabel = dayNames[new Date(d.date + 'T00:00:00').getDay()];
+        return `
+      <div class="activity-bar-wrapper">
+        <div class="activity-bar" style="height: ${Math.max(pct, 4)}%"></div>
+        <span class="activity-label">${dayLabel}</span>
+      </div>`;
+      })
+      .join('');
+    actSection.innerHTML = `<div class="stats-section-title">Last 7 Days</div><div class="activity-chart">${barsHtml}</div>`;
+    statsBody.appendChild(actSection);
+  }
+
+  statsOverlay.classList.add('visible');
+}
+
+function closeStats(): void {
+  statsOverlay.classList.remove('visible');
+}
+
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+statsBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  openStats();
+});
+
+statsClose.addEventListener('click', closeStats);
+
+statsOverlay.addEventListener('click', (e) => {
+  if (e.target === statsOverlay) closeStats();
+});
+
 // ── Event handlers ──
 
 categoryTabs.forEach((tab) => {
@@ -344,8 +456,12 @@ searchInput.addEventListener('input', () => {
 });
 
 document.addEventListener('keydown', (e) => {
-  // Close settings on Escape if open
+  // Close modals on Escape, or close window
   if (e.key === 'Escape') {
+    if (statsOverlay.classList.contains('visible')) {
+      closeStats();
+      return;
+    }
     if (settingsOverlay.classList.contains('visible')) {
       closeSettings();
       return;
@@ -354,8 +470,9 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
-  // Don't process shortcuts when settings modal is open
+  // Don't process shortcuts when a modal is open
   if (settingsOverlay.classList.contains('visible')) return;
+  if (statsOverlay.classList.contains('visible')) return;
 
   // Only handle navigation keys when not typing in search
   const inSearch = document.activeElement === searchInput;

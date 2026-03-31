@@ -564,3 +564,168 @@ body {
 .btn-secondary:hover {
   background: #313244;
 }
+
+/* ── Stats modal ── */
+
+.stats-modal {
+  width: 380px;
+}
+
+.stats-section {
+  margin-bottom: 16px;
+}
+
+.stats-section:last-child {
+  margin-bottom: 0;
+}
+
+.stats-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #6c7086;
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.stat-card {
+  background: #11111b;
+  border: 1px solid #313244;
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #89b4fa;
+  line-height: 1.2;
+}
+
+.stat-label {
+  font-size: 10px;
+  color: #6c7086;
+  margin-top: 2px;
+}
+
+.category-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.category-bar-label {
+  font-size: 12px;
+  width: 48px;
+  text-align: right;
+  color: #a6adc8;
+  text-transform: capitalize;
+}
+
+.category-bar-track {
+  flex: 1;
+  height: 14px;
+  background: #11111b;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.category-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.category-bar-fill.bar-code  { background: #cba6f7; }
+.category-bar-fill.bar-url   { background: #89b4fa; }
+.category-bar-fill.bar-email { background: #f9e2af; }
+.category-bar-fill.bar-phone { background: #a6e3a1; }
+.category-bar-fill.bar-text  { background: #585b70; }
+
+.category-bar-count {
+  font-size: 11px;
+  color: #6c7086;
+  width: 32px;
+}
+
+.top-clip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: #11111b;
+  border-radius: 6px;
+  margin-bottom: 4px;
+}
+
+.top-clip-rank {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6c7086;
+  width: 18px;
+  text-align: center;
+}
+
+.top-clip-preview {
+  flex: 1;
+  font-size: 12px;
+  color: #cdd6f4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.top-clip-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: #cba6f7;
+  background: #45475a;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.activity-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 48px;
+  padding-top: 4px;
+}
+
+.activity-bar-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+}
+
+.activity-bar {
+  width: 100%;
+  background: #89b4fa;
+  border-radius: 3px 3px 0 0;
+  margin-top: auto;
+  min-height: 2px;
+  transition: height 0.3s ease;
+}
+
+.activity-label {
+  font-size: 9px;
+  color: #6c7086;
+  margin-top: 3px;
+}
+
+.stats-empty {
+  text-align: center;
+  color: #6c7086;
+  font-size: 13px;
+  padding: 20px 0;
+}
