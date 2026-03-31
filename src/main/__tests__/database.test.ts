@@ -30,6 +30,7 @@ import {
   incrementCopyCount,
   getAllClips,
   getClipCount,
+  importClips,
   closeDatabase,
 } from '../database';
 
@@ -251,5 +252,89 @@ describe('pruning', () => {
     const found = getClipById(pinned!.id);
     expect(found).toBeDefined();
     expect(found!.content).toBe('pinned-clip');
+  });
+});
+
+describe('importClips', () => {
+  it('imports an array of clips and returns counts', () => {
+    const result = importClips([
+      { content: 'imported-1', category: 'text' },
+      { content: 'imported-2', category: 'url' },
+      { content: 'imported-3', category: 'code' },
+    ]);
+    expect(result.imported).toBe(3);
+    expect(result.skipped).toBe(0);
+    expect(result.total).toBe(3);
+    expect(getClipCount()).toBe(3);
+  });
+
+  it('skips duplicates already in the database', () => {
+    insertClip('existing-clip', 'text');
+    const result = importClips([
+      { content: 'existing-clip', category: 'text' },
+      { content: 'new-clip', category: 'text' },
+    ]);
+    expect(result.imported).toBe(1);
+    expect(result.skipped).toBe(1);
+    expect(getClipCount()).toBe(2);
+  });
+
+  it('skips duplicates within the import batch itself', () => {
+    const result = importClips([
+      { content: 'same-content', category: 'text' },
+      { content: 'same-content', category: 'text' },
+    ]);
+    expect(result.imported).toBe(1);
+    expect(result.skipped).toBe(1);
+  });
+
+  it('skips entries with missing or invalid content', () => {
+    const result = importClips([
+      { content: '', category: 'text' },
+      { content: 'valid', category: 'text' },
+      { category: 'text' } as any,
+      { content: 123 } as any,
+    ]);
+    expect(result.imported).toBe(1);
+    expect(result.skipped).toBe(3);
+  });
+
+  it('preserves pinned state from imported clips', () => {
+    importClips([
+      { content: 'pinned-import', category: 'text', pinned: 1 },
+    ]);
+    const clips = getClips();
+    expect(clips[0].content).toBe('pinned-import');
+    expect(clips[0].pinned).toBe(1);
+  });
+
+  it('preserves copy_count from imported clips', () => {
+    importClips([
+      { content: 'counted-clip', category: 'text', copy_count: 5 },
+    ]);
+    const clips = getClips();
+    expect(clips[0].copy_count).toBe(5);
+  });
+
+  it('preserves created_at from imported clips', () => {
+    const timestamp = '2025-01-15 10:30:00';
+    importClips([
+      { content: 'dated-clip', category: 'text', created_at: timestamp },
+    ]);
+    const clips = getClips();
+    expect(clips[0].created_at).toBe(timestamp);
+  });
+
+  it('defaults category to text when not provided', () => {
+    importClips([{ content: 'no-category' }]);
+    const clips = getClips();
+    expect(clips[0].category).toBe('text');
+  });
+
+  it('handles empty array gracefully', () => {
+    const result = importClips([]);
+    expect(result.imported).toBe(0);
+    expect(result.skipped).toBe(0);
+    expect(result.total).toBe(0);
   });
 });

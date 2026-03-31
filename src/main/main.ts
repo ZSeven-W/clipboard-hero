@@ -24,6 +24,7 @@ import {
   incrementCopyCount,
   getAllClips,
   getClipCount,
+  importClips,
 } from './database';
 import { startWatching, stopWatching, skipNextChange, updateInterval } from './clipboard-watcher';
 import { loadSettings, getSettings, saveSettings, Settings } from './settings';
@@ -127,6 +128,37 @@ function createTray(): void {
       },
     },
     {
+      label: 'Import History...',
+      click: async () => {
+        const win = mainWindow;
+        const result = await dialog.showOpenDialog(win ?? new BrowserWindow({ show: false }), {
+          title: 'Import Clipboard History',
+          filters: [{ name: 'JSON Files', extensions: ['json'] }],
+          properties: ['openFile'],
+        });
+
+        if (!result.canceled && result.filePaths.length > 0) {
+          try {
+            const raw = fs.readFileSync(result.filePaths[0], 'utf-8');
+            const clips = JSON.parse(raw);
+            if (!Array.isArray(clips)) {
+              dialog.showErrorBox('Import Error', 'Invalid format: expected a JSON array of clips.');
+              return;
+            }
+            const importResult = importClips(clips);
+            mainWindow?.webContents.send('clips:refresh');
+            dialog.showMessageBox(win ?? new BrowserWindow({ show: false }), {
+              type: 'info',
+              title: 'Import Complete',
+              message: `Imported ${importResult.imported} clip(s), skipped ${importResult.skipped} duplicate(s).`,
+            });
+          } catch {
+            dialog.showErrorBox('Import Error', 'Failed to read or parse the selected file.');
+          }
+        }
+      },
+    },
+    {
       label: 'Clear History',
       click: () => {
         clearClips();
@@ -149,6 +181,7 @@ function setupIPC(): void {
   ipcMain.handle('clips:pin', (_event, id: number) => pinClip(id));
   ipcMain.handle('clips:unpin', (_event, id: number) => unpinClip(id));
   ipcMain.handle('clips:export', () => getAllClips());
+  ipcMain.handle('clips:import', (_event, clips: Array<Record<string, unknown>>) => importClips(clips));
 
   ipcMain.handle('clips:copy', (_event, id: number) => {
     const clip = getClipById(id);

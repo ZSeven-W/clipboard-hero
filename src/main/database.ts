@@ -134,6 +134,56 @@ export function getAllClips(): Clip[] {
   ).all() as Clip[];
 }
 
+export interface ImportResult {
+  imported: number;
+  skipped: number;
+  total: number;
+}
+
+export function importClips(
+  clips: Array<{
+    content: string;
+    category?: string;
+    pinned?: number;
+    copy_count?: number;
+    created_at?: string;
+  }>
+): ImportResult {
+  let imported = 0;
+  let skipped = 0;
+
+  const insertStmt = db.prepare(
+    'INSERT OR IGNORE INTO clips (content, category, preview, hash, pinned, copy_count, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  );
+
+  const transaction = db.transaction(() => {
+    for (const clip of clips) {
+      if (!clip.content || typeof clip.content !== 'string') {
+        skipped++;
+        continue;
+      }
+
+      const hash = crypto.createHash('md5').update(clip.content).digest('hex');
+      const preview = clip.content.substring(0, 200);
+      const category = clip.category || 'text';
+      const pinned = clip.pinned ? 1 : 0;
+      const copyCount = clip.copy_count ?? 0;
+      const createdAt = clip.created_at || new Date().toISOString();
+
+      const result = insertStmt.run(clip.content, category, preview, hash, pinned, copyCount, createdAt);
+      if (result.changes > 0) {
+        imported++;
+      } else {
+        skipped++;
+      }
+    }
+  });
+
+  transaction();
+
+  return { imported, skipped, total: clips.length };
+}
+
 export function closeDatabase(): void {
   if (db) db.close();
 }
