@@ -55,6 +55,14 @@ interface TransformResult {
   error?: string;
 }
 
+interface SnippetItem {
+  id: number;
+  name: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
 interface ClipboardAPI {
   getClips(category?: string): Promise<ClipItem[]>;
   searchClips(query: string): Promise<ClipItem[]>;
@@ -70,6 +78,15 @@ interface ClipboardAPI {
   getTransforms(): Promise<TransformInfo[]>;
   applyTransform(id: string, input: string): Promise<TransformResult>;
   copyTransformed(text: string): Promise<void>;
+  createSnippet(name: string, content: string): Promise<SnippetItem>;
+  getSnippets(): Promise<SnippetItem[]>;
+  getSnippetById(id: number): Promise<SnippetItem | undefined>;
+  searchSnippets(query: string): Promise<SnippetItem[]>;
+  updateSnippet(id: number, update: { name?: string; content?: string }): Promise<SnippetItem | null>;
+  deleteSnippet(id: number): Promise<void>;
+  getSnippetCount(): Promise<number>;
+  saveClipAsSnippet(clipId: number, name: string): Promise<SnippetItem | null>;
+  copySnippet(id: number): Promise<void>;
   getSettings(): Promise<AppSettings>;
   saveSettings(update: Partial<AppSettings>): Promise<AppSettings>;
   onClipboardChanged(callback: (clip: ClipItem) => void): void;

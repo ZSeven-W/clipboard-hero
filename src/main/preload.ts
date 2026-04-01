@@ -16,6 +16,17 @@ contextBridge.exposeInMainWorld('api', {
   getTransforms: () => ipcRenderer.invoke('transforms:list'),
   applyTransform: (id: string, input: string) => ipcRenderer.invoke('transforms:apply', id, input),
   copyTransformed: (text: string) => ipcRenderer.invoke('transforms:copy', text),
+  // Snippets
+  createSnippet: (name: string, content: string) => ipcRenderer.invoke('snippets:create', name, content),
+  getSnippets: () => ipcRenderer.invoke('snippets:getAll'),
+  getSnippetById: (id: number) => ipcRenderer.invoke('snippets:getById', id),
+  searchSnippets: (query: string) => ipcRenderer.invoke('snippets:search', query),
+  updateSnippet: (id: number, update: { name?: string; content?: string }) =>
+    ipcRenderer.invoke('snippets:update', id, update),
+  deleteSnippet: (id: number) => ipcRenderer.invoke('snippets:delete', id),
+  getSnippetCount: () => ipcRenderer.invoke('snippets:count'),
+  saveClipAsSnippet: (clipId: number, name: string) => ipcRenderer.invoke('snippets:saveFromClip', clipId, name),
+  copySnippet: (id: number) => ipcRenderer.invoke('snippets:copy', id),
   getSettings: () => ipcRenderer.invoke('settings:get'),
   saveSettings: (update: Record<string, unknown>) => ipcRenderer.invoke('settings:save', update),
   onClipboardChanged: (callback: (clip: unknown) => void) => {

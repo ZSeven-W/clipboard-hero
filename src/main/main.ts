@@ -28,6 +28,14 @@ import {
   pruneExpiredClips,
   updateClipContent,
   getStatistics,
+  createSnippet,
+  getSnippets,
+  getSnippetById,
+  searchSnippets,
+  updateSnippet,
+  deleteSnippet,
+  getSnippetCount,
+  saveClipAsSnippet,
 } from './database';
 import { startWatching, stopWatching, skipNextChange, updateInterval } from './clipboard-watcher';
 import { loadSettings, getSettings, saveSettings, Settings } from './settings';
@@ -209,6 +217,24 @@ function setupIPC(): void {
   ipcMain.handle('transforms:copy', (_event, text: string) => {
     skipNextChange();
     clipboard.writeText(text);
+  });
+
+  // Snippets
+  ipcMain.handle('snippets:create', (_event, name: string, content: string) => createSnippet(name, content));
+  ipcMain.handle('snippets:getAll', () => getSnippets());
+  ipcMain.handle('snippets:getById', (_event, id: number) => getSnippetById(id));
+  ipcMain.handle('snippets:search', (_event, query: string) => searchSnippets(query));
+  ipcMain.handle('snippets:update', (_event, id: number, update: { name?: string; content?: string }) =>
+    updateSnippet(id, update));
+  ipcMain.handle('snippets:delete', (_event, id: number) => deleteSnippet(id));
+  ipcMain.handle('snippets:count', () => getSnippetCount());
+  ipcMain.handle('snippets:saveFromClip', (_event, clipId: number, name: string) => saveClipAsSnippet(clipId, name));
+  ipcMain.handle('snippets:copy', (_event, id: number) => {
+    const snippet = getSnippetById(id);
+    if (snippet) {
+      skipNextChange();
+      clipboard.writeText(snippet.content);
+    }
   });
 
   ipcMain.handle('settings:get', () => getSettings());

@@ -39,6 +39,18 @@ export function initDatabase(customDbPath?: string): void {
   db.exec('CREATE INDEX IF NOT EXISTS idx_clips_created_at ON clips(created_at DESC)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_clips_pinned ON clips(pinned DESC)');
 
+  // Snippets table — user-saved named text templates
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS snippets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_snippets_name ON snippets(name)');
+
   // Migrate existing DB: add columns if they don't exist
   const cols = (db.pragma('table_info(clips)') as { name: string }[]).map((c) => c.name);
   if (!cols.includes('pinned')) {
@@ -276,6 +288,67 @@ export function getStatistics(): Statistics {
     topCopied,
     recentActivity,
   };
+}
+
+// ── Snippets ──
+
+export interface Snippet {
+  id: number;
+  name: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export function createSnippet(name: string, content: string): Snippet {
+  const result = db.prepare(
+    'INSERT INTO snippets (name, content) VALUES (?, ?)'
+  ).run(name, content);
+
+  return db.prepare('SELECT * FROM snippets WHERE id = ?').get(result.lastInsertRowid) as Snippet;
+}
+
+export function getSnippets(): Snippet[] {
+  return db.prepare('SELECT * FROM snippets ORDER BY updated_at DESC').all() as Snippet[];
+}
+
+export function getSnippetById(id: number): Snippet | undefined {
+  return db.prepare('SELECT * FROM snippets WHERE id = ?').get(id) as Snippet | undefined;
+}
+
+export function searchSnippets(query: string): Snippet[] {
+  return db.prepare(
+    'SELECT * FROM snippets WHERE name LIKE ? OR content LIKE ? ORDER BY updated_at DESC'
+  ).all(`%${query}%`, `%${query}%`) as Snippet[];
+}
+
+export function updateSnippet(id: number, update: { name?: string; content?: string }): Snippet | null {
+  const existing = getSnippetById(id);
+  if (!existing) return null;
+
+  const newName = update.name ?? existing.name;
+  const newContent = update.content ?? existing.content;
+
+  db.prepare(
+    'UPDATE snippets SET name = ?, content = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+  ).run(newName, newContent, id);
+
+  return getSnippetById(id) ?? null;
+}
+
+export function deleteSnippet(id: number): void {
+  db.prepare('DELETE FROM snippets WHERE id = ?').run(id);
+}
+
+export function getSnippetCount(): number {
+  return (db.prepare('SELECT COUNT(*) as cnt FROM snippets').get() as { cnt: number }).cnt;
+}
+
+export function saveClipAsSnippet(clipId: number, name: string): Snippet | null {
+  const clip = getClipById(clipId);
+  if (!clip) return null;
+
+  return createSnippet(name, clip.content);
 }
 
 export function closeDatabase(): void {
