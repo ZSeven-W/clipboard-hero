@@ -13,6 +13,9 @@ contextBridge.exposeInMainWorld('api', {
   updateClip: (id: number, newContent: string) => ipcRenderer.invoke('clips:update', id, newContent),
   getClipCount: () => ipcRenderer.invoke('clips:count'),
   getStats: () => ipcRenderer.invoke('clips:stats'),
+  getTransforms: () => ipcRenderer.invoke('transforms:list'),
+  applyTransform: (id: string, input: string) => ipcRenderer.invoke('transforms:apply', id, input),
+  copyTransformed: (text: string) => ipcRenderer.invoke('transforms:copy', text),
   getSettings: () => ipcRenderer.invoke('settings:get'),
   saveSettings: (update: Record<string, unknown>) => ipcRenderer.invoke('settings:save', update),
   onClipboardChanged: (callback: (clip: unknown) => void) => {

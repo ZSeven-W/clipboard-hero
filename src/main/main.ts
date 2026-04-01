@@ -31,6 +31,7 @@ import {
 } from './database';
 import { startWatching, stopWatching, skipNextChange, updateInterval } from './clipboard-watcher';
 import { loadSettings, getSettings, saveSettings, Settings } from './settings';
+import { getTransformList, applyTransform } from './transforms';
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -202,6 +203,13 @@ function setupIPC(): void {
 
   ipcMain.handle('clips:count', () => getClipCount());
   ipcMain.handle('clips:stats', () => getStatistics());
+
+  ipcMain.handle('transforms:list', () => getTransformList());
+  ipcMain.handle('transforms:apply', (_event, id: string, input: string) => applyTransform(id, input));
+  ipcMain.handle('transforms:copy', (_event, text: string) => {
+    skipNextChange();
+    clipboard.writeText(text);
+  });
 
   ipcMain.handle('settings:get', () => getSettings());
   ipcMain.handle('settings:save', (_event, update: Partial<Settings>) => {

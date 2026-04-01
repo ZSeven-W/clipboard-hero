@@ -115,6 +115,16 @@ function createClipElement(clip: ClipItem, index: number): HTMLDivElement {
     meta.appendChild(countBadge);
   }
 
+  // Transform button
+  const transformBtn = document.createElement('button');
+  transformBtn.className = 'clip-transform';
+  transformBtn.title = 'Transform';
+  transformBtn.textContent = '\u21C4'; // ⇄
+  transformBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openTransformPicker(clip);
+  });
+
   // Edit button
   const editBtn = document.createElement('button');
   editBtn.className = 'clip-edit';
@@ -159,6 +169,7 @@ function createClipElement(clip: ClipItem, index: number): HTMLDivElement {
 
   item.appendChild(preview);
   item.appendChild(meta);
+  item.appendChild(transformBtn);
   item.appendChild(editBtn);
   item.appendChild(pinBtn);
   item.appendChild(deleteBtn);
@@ -434,6 +445,199 @@ statsOverlay.addEventListener('click', (e) => {
   if (e.target === statsOverlay) closeStats();
 });
 
+// ── Transform picker ──
+
+const transformOverlay = document.getElementById('transform-overlay') as HTMLDivElement;
+const transformClose = document.getElementById('transform-close') as HTMLButtonElement;
+const transformBody = document.getElementById('transform-body') as HTMLDivElement;
+const transformSearch = document.getElementById('transform-search') as HTMLInputElement;
+const transformPreview = document.getElementById('transform-preview') as HTMLDivElement;
+const transformPreviewContent = document.getElementById('transform-preview-content') as HTMLPreElement;
+const transformApply = document.getElementById('transform-apply') as HTMLButtonElement;
+const transformCancel = document.getElementById('transform-cancel') as HTMLButtonElement;
+const transformTitle = document.getElementById('transform-title') as HTMLSpanElement;
+
+let transformClip: ClipItem | null = null;
+let transformResult: string | null = null;
+let transformFocusedIndex = 0;
+let filteredTransforms: TransformInfo[] = [];
+
+async function openTransformPicker(clip: ClipItem): Promise<void> {
+  transformClip = clip;
+  transformResult = null;
+  transformSearch.value = '';
+  transformPreview.classList.add('hidden');
+  transformBody.classList.remove('hidden');
+  transformTitle.textContent = 'Transform Clip';
+
+  const allTransforms = await window.api.getTransforms();
+  filteredTransforms = allTransforms;
+  renderTransformList(allTransforms);
+  transformOverlay.classList.add('visible');
+  transformSearch.focus();
+}
+
+function renderTransformList(items: TransformInfo[]): void {
+  transformBody.innerHTML = '';
+  const categories = ['text', 'format', 'encode', 'extract'];
+  const categoryLabels: Record<string, string> = {
+    text: 'Text',
+    format: 'Format',
+    encode: 'Encode / Decode',
+    extract: 'Extract',
+  };
+
+  let globalIndex = 0;
+  for (const cat of categories) {
+    const catItems = items.filter((t) => t.category === cat);
+    if (catItems.length === 0) continue;
+
+    const section = document.createElement('div');
+    section.className = 'transform-section';
+
+    const title = document.createElement('div');
+    title.className = 'transform-section-title';
+    title.textContent = categoryLabels[cat] || cat;
+    section.appendChild(title);
+
+    for (const t of catItems) {
+      const row = document.createElement('div');
+      row.className = 'transform-row';
+      row.dataset.transformId = t.id;
+      row.dataset.index = String(globalIndex);
+
+      const name = document.createElement('span');
+      name.className = 'transform-name';
+      name.textContent = t.name;
+
+      const desc = document.createElement('span');
+      desc.className = 'transform-desc';
+      desc.textContent = t.description;
+
+      row.appendChild(name);
+      row.appendChild(desc);
+
+      row.addEventListener('click', () => previewTransform(t.id));
+      row.addEventListener('mouseenter', () => {
+        transformFocusedIndex = parseInt(row.dataset.index || '0', 10);
+        setTransformFocus(transformFocusedIndex);
+      });
+
+      section.appendChild(row);
+      globalIndex++;
+    }
+
+    transformBody.appendChild(section);
+  }
+
+  transformFocusedIndex = 0;
+  setTransformFocus(0);
+}
+
+function setTransformFocus(index: number): void {
+  const rows = transformBody.querySelectorAll<HTMLDivElement>('.transform-row');
+  rows.forEach((r) => r.classList.remove('focused'));
+  if (index >= 0 && index < rows.length) {
+    transformFocusedIndex = index;
+    rows[index].classList.add('focused');
+    rows[index].scrollIntoView({ block: 'nearest' });
+  }
+}
+
+async function previewTransform(id: string): Promise<void> {
+  if (!transformClip) return;
+
+  const result = await window.api.applyTransform(id, transformClip.content);
+  if (!result.success) {
+    // Show error inline
+    transformPreviewContent.textContent = `Error: ${result.error}`;
+    transformPreviewContent.classList.add('error');
+  } else {
+    transformPreviewContent.textContent = result.result || '';
+    transformPreviewContent.classList.remove('error');
+    transformResult = result.result || '';
+  }
+
+  transformBody.classList.add('hidden');
+  transformPreview.classList.remove('hidden');
+  const transform = filteredTransforms.find((t) => t.id === id);
+  transformTitle.textContent = transform ? transform.name : 'Transform';
+}
+
+transformCancel.addEventListener('click', () => {
+  transformPreview.classList.add('hidden');
+  transformBody.classList.remove('hidden');
+  transformTitle.textContent = 'Transform Clip';
+  transformSearch.focus();
+});
+
+transformApply.addEventListener('click', async () => {
+  if (transformResult != null && transformClip) {
+    await window.api.copyTransformed(transformResult);
+    closeTransformPicker();
+    await loadClips();
+  }
+});
+
+function closeTransformPicker(): void {
+  transformOverlay.classList.remove('visible');
+  transformClip = null;
+  transformResult = null;
+}
+
+transformClose.addEventListener('click', closeTransformPicker);
+
+transformOverlay.addEventListener('click', (e) => {
+  if (e.target === transformOverlay) closeTransformPicker();
+});
+
+// Filter transforms as user types
+transformSearch.addEventListener('input', async () => {
+  const query = transformSearch.value.toLowerCase();
+  const allTransforms = await window.api.getTransforms();
+  filteredTransforms = query
+    ? allTransforms.filter(
+        (t) =>
+          t.name.toLowerCase().includes(query) ||
+          t.description.toLowerCase().includes(query) ||
+          t.category.toLowerCase().includes(query)
+      )
+    : allTransforms;
+  renderTransformList(filteredTransforms);
+});
+
+// Keyboard nav within transform picker
+transformSearch.addEventListener('keydown', (e) => {
+  const rows = transformBody.querySelectorAll<HTMLDivElement>('.transform-row');
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    setTransformFocus(Math.min(transformFocusedIndex + 1, rows.length - 1));
+    return;
+  }
+  if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    setTransformFocus(Math.max(transformFocusedIndex - 1, 0));
+    return;
+  }
+  if (e.key === 'Enter' && rows.length > 0) {
+    e.preventDefault();
+    const row = rows[transformFocusedIndex];
+    if (row?.dataset.transformId) {
+      previewTransform(row.dataset.transformId);
+    }
+    return;
+  }
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    if (!transformPreview.classList.contains('hidden')) {
+      transformCancel.click();
+    } else {
+      closeTransformPicker();
+    }
+  }
+});
+
 // ── Event handlers ──
 
 categoryTabs.forEach((tab) => {
@@ -458,6 +662,14 @@ searchInput.addEventListener('input', () => {
 document.addEventListener('keydown', (e) => {
   // Close modals on Escape, or close window
   if (e.key === 'Escape') {
+    if (transformOverlay.classList.contains('visible')) {
+      if (!transformPreview.classList.contains('hidden')) {
+        transformCancel.click();
+      } else {
+        closeTransformPicker();
+      }
+      return;
+    }
     if (statsOverlay.classList.contains('visible')) {
       closeStats();
       return;
@@ -473,6 +685,7 @@ document.addEventListener('keydown', (e) => {
   // Don't process shortcuts when a modal is open
   if (settingsOverlay.classList.contains('visible')) return;
   if (statsOverlay.classList.contains('visible')) return;
+  if (transformOverlay.classList.contains('visible')) return;
 
   // Only handle navigation keys when not typing in search
   const inSearch = document.activeElement === searchInput;
@@ -533,6 +746,13 @@ document.addEventListener('keydown', (e) => {
     const items = clipList.querySelectorAll<HTMLDivElement>('.clip-item');
     const el = items[focusedIndex];
     if (el) startEditing(el, clip, focusedIndex);
+    return;
+  }
+
+  // T to open transform picker on focused item (when not in search)
+  if (e.key === 't' && !inSearch && focusedIndex >= 0 && focusedIndex < currentClips.length) {
+    e.preventDefault();
+    openTransformPicker(currentClips[focusedIndex]);
     return;
   }
 });

@@ -89,6 +89,32 @@
     </div>
   </div>
 
+  <!-- Transform picker modal -->
+  <div id="transform-overlay" class="settings-overlay">
+    <div class="settings-modal transform-modal">
+      <div class="settings-header">
+        <span id="transform-title">Transform Clip</span>
+        <button id="transform-close" class="settings-close">&times;</button>
+      </div>
+      <div class="transform-search-bar">
+        <input type="text" id="transform-search" placeholder="Filter transforms..." autofocus>
+      </div>
+      <div class="settings-body transform-body" id="transform-body">
+        <!-- Populated by renderer.ts -->
+      </div>
+      <div id="transform-preview" class="transform-preview hidden">
+        <div class="transform-preview-header">
+          <span>Preview</span>
+          <div class="transform-preview-actions">
+            <button id="transform-apply" class="btn-primary btn-sm">Copy &amp; Save</button>
+            <button id="transform-cancel" class="btn-secondary btn-sm">Back</button>
+          </div>
+        </div>
+        <pre id="transform-preview-content"></pre>
+      </div>
+    </div>
+  </div>
+
   <!-- Stats modal -->
   <div id="stats-overlay" class="settings-overlay">
     <div class="settings-modal stats-modal">

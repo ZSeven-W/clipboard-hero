@@ -42,6 +42,19 @@ interface ClipStatistics {
   recentActivity: DailyActivity[];
 }
 
+interface TransformInfo {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+}
+
+interface TransformResult {
+  success: boolean;
+  result?: string;
+  error?: string;
+}
+
 interface ClipboardAPI {
   getClips(category?: string): Promise<ClipItem[]>;
   searchClips(query: string): Promise<ClipItem[]>;
@@ -54,6 +67,9 @@ interface ClipboardAPI {
   updateClip(id: number, newContent: string): Promise<ClipItem | null>;
   getClipCount(): Promise<number>;
   getStats(): Promise<ClipStatistics>;
+  getTransforms(): Promise<TransformInfo[]>;
+  applyTransform(id: string, input: string): Promise<TransformResult>;
+  copyTransformed(text: string): Promise<void>;
   getSettings(): Promise<AppSettings>;
   saveSettings(update: Partial<AppSettings>): Promise<AppSettings>;
   onClipboardChanged(callback: (clip: ClipItem) => void): void;
