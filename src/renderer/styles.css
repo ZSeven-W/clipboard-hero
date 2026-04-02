@@ -205,7 +205,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   margin-bottom: 4px;
-  padding-right: 102px; /* space for transform + edit + pin + delete buttons */
+  padding-right: 126px; /* space for snippet + transform + edit + pin + delete buttons */
 }
 
 .clip-meta {
@@ -892,4 +892,228 @@ body {
 .transform-preview pre.error {
   color: #f38ba8;
   border-color: #f38ba8;
+}
+
+/* ── Snippets modal ── */
+
+.snippets-modal {
+  width: 400px;
+  max-height: 480px;
+  display: flex;
+  flex-direction: column;
+}
+
+.snippets-toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px 0;
+  align-items: center;
+}
+
+.snippets-toolbar input {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid #313244;
+  border-radius: 6px;
+  background: #11111b;
+  color: #cdd6f4;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.snippets-toolbar input:focus {
+  border-color: #89b4fa;
+}
+
+.snippets-toolbar input::placeholder {
+  color: #6c7086;
+}
+
+.snippets-body {
+  overflow-y: auto;
+  max-height: 300px;
+  padding: 8px 12px !important;
+  gap: 4px !important;
+}
+
+.snippet-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.1s;
+  position: relative;
+}
+
+.snippet-item:hover,
+.snippet-item.focused {
+  background: #313244;
+}
+
+.snippet-item.copied {
+  background: #a6e3a1 !important;
+}
+
+.snippet-item.copied .snippet-name,
+.snippet-item.copied .snippet-preview {
+  color: #1e1e2e !important;
+}
+
+.snippet-info {
+  flex: 1;
+  min-width: 0;
+  padding-right: 56px;
+}
+
+.snippet-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #cdd6f4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.snippet-preview {
+  font-size: 11px;
+  color: #6c7086;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.snippet-actions {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.snippet-item:hover .snippet-actions,
+.snippet-item.focused .snippet-actions {
+  opacity: 1;
+}
+
+.snippet-action-btn {
+  background: none;
+  border: none;
+  color: #6c7086;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.snippet-action-btn:hover {
+  background: #45475a;
+  color: #cdd6f4;
+}
+
+.snippet-action-btn.delete-btn:hover {
+  background: #f38ba8;
+  color: #1e1e2e;
+}
+
+/* ── Snippets form ── */
+
+.snippets-form {
+  padding: 12px;
+  border-top: 1px solid #313244;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.snippets-form.hidden {
+  display: none;
+}
+
+.snippets-form-group label {
+  display: block;
+  font-size: 11px;
+  color: #a6adc8;
+  margin-bottom: 4px;
+}
+
+.snippets-form-group input,
+.snippets-form-group textarea {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid #313244;
+  border-radius: 6px;
+  background: #11111b;
+  color: #cdd6f4;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+  font-family: inherit;
+}
+
+.snippets-form-group input:focus,
+.snippets-form-group textarea:focus {
+  border-color: #89b4fa;
+}
+
+.snippets-form-group textarea {
+  resize: vertical;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Menlo', monospace;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.snippets-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.snippets-empty {
+  text-align: center;
+  color: #6c7086;
+  font-size: 13px;
+  padding: 20px 0;
+}
+
+/* ── Save-as-snippet modal ── */
+
+.save-snippet-modal {
+  width: 300px;
+}
+
+/* ── Clip save-as-snippet button ── */
+
+.clip-snippet {
+  position: absolute;
+  top: 8px;
+  right: 104px;
+  background: none;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+  padding: 2px 4px;
+  border-radius: 4px;
+  line-height: 1;
+  color: #6c7086;
+}
+
+.clip-item:hover .clip-snippet,
+.clip-item.focused .clip-snippet {
+  opacity: 0.6;
+}
+
+.clip-snippet:hover {
+  opacity: 1 !important;
+  color: #f9e2af;
+  background: #45475a;
 }

@@ -11,6 +11,7 @@
   <div class="titlebar" id="titlebar">
     <span class="title">ClipboardHero</span>
     <div class="titlebar-actions">
+      <button id="snippets-btn" class="titlebar-btn" title="Snippets">&#9998;</button>
       <button id="stats-btn" class="titlebar-btn" title="Statistics">&#9776;</button>
       <button id="settings-btn" class="titlebar-btn" title="Settings">&#9881;</button>
       <span class="shortcut-hint">Cmd+Shift+V</span>
@@ -124,6 +125,58 @@
       </div>
       <div class="settings-body" id="stats-body">
         <!-- Populated by renderer.ts -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Snippets modal -->
+  <div id="snippets-overlay" class="settings-overlay">
+    <div class="settings-modal snippets-modal">
+      <div class="settings-header">
+        <span id="snippets-title">Snippets</span>
+        <button id="snippets-close" class="settings-close">&times;</button>
+      </div>
+      <div class="snippets-toolbar">
+        <input type="text" id="snippets-search" placeholder="Search snippets...">
+        <button id="snippets-new-btn" class="btn-primary btn-sm">+ New</button>
+      </div>
+      <div class="settings-body snippets-body" id="snippets-body">
+        <!-- Populated by renderer.ts -->
+      </div>
+      <!-- Create / Edit form (hidden by default) -->
+      <div id="snippets-form" class="snippets-form hidden">
+        <div class="snippets-form-group">
+          <label for="snippet-name-input">Name</label>
+          <input type="text" id="snippet-name-input" placeholder="Snippet name...">
+        </div>
+        <div class="snippets-form-group">
+          <label for="snippet-content-input">Content</label>
+          <textarea id="snippet-content-input" rows="4" placeholder="Snippet content..."></textarea>
+        </div>
+        <div class="snippets-form-actions">
+          <button id="snippet-form-cancel" class="btn-secondary btn-sm">Cancel</button>
+          <button id="snippet-form-save" class="btn-primary btn-sm">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Save-as-snippet prompt -->
+  <div id="save-snippet-overlay" class="settings-overlay">
+    <div class="settings-modal save-snippet-modal">
+      <div class="settings-header">
+        <span>Save as Snippet</span>
+        <button id="save-snippet-close" class="settings-close">&times;</button>
+      </div>
+      <div class="settings-body">
+        <div class="settings-group">
+          <label for="save-snippet-name">Snippet name</label>
+          <input type="text" id="save-snippet-name" placeholder="Give this snippet a name...">
+        </div>
+      </div>
+      <div class="settings-footer">
+        <button id="save-snippet-cancel" class="btn-secondary">Cancel</button>
+        <button id="save-snippet-confirm" class="btn-primary">Save</button>
       </div>
     </div>
   </div>

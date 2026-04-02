@@ -115,6 +115,16 @@ function createClipElement(clip: ClipItem, index: number): HTMLDivElement {
     meta.appendChild(countBadge);
   }
 
+  // Save as Snippet button
+  const snippetBtn = document.createElement('button');
+  snippetBtn.className = 'clip-snippet';
+  snippetBtn.title = 'Save as Snippet';
+  snippetBtn.textContent = '\u2702'; // ✂
+  snippetBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openSaveSnippetPrompt(clip.id);
+  });
+
   // Transform button
   const transformBtn = document.createElement('button');
   transformBtn.className = 'clip-transform';
@@ -169,6 +179,7 @@ function createClipElement(clip: ClipItem, index: number): HTMLDivElement {
 
   item.appendChild(preview);
   item.appendChild(meta);
+  item.appendChild(snippetBtn);
   item.appendChild(transformBtn);
   item.appendChild(editBtn);
   item.appendChild(pinBtn);
@@ -670,6 +681,14 @@ document.addEventListener('keydown', (e) => {
       }
       return;
     }
+    if (snippetsOverlay.classList.contains('visible')) {
+      closeSnippets();
+      return;
+    }
+    if (saveSnippetOverlay.classList.contains('visible')) {
+      closeSaveSnippetPrompt();
+      return;
+    }
     if (statsOverlay.classList.contains('visible')) {
       closeStats();
       return;
@@ -686,6 +705,8 @@ document.addEventListener('keydown', (e) => {
   if (settingsOverlay.classList.contains('visible')) return;
   if (statsOverlay.classList.contains('visible')) return;
   if (transformOverlay.classList.contains('visible')) return;
+  if (snippetsOverlay.classList.contains('visible')) return;
+  if (saveSnippetOverlay.classList.contains('visible')) return;
 
   // Only handle navigation keys when not typing in search
   const inSearch = document.activeElement === searchInput;
@@ -755,6 +776,13 @@ document.addEventListener('keydown', (e) => {
     openTransformPicker(currentClips[focusedIndex]);
     return;
   }
+
+  // S to save focused clip as snippet (when not in search)
+  if (e.key === 's' && !inSearch && focusedIndex >= 0 && focusedIndex < currentClips.length) {
+    e.preventDefault();
+    openSaveSnippetPrompt(currentClips[focusedIndex].id);
+    return;
+  }
 });
 
 // Hide preview when mouse leaves clip list
@@ -773,6 +801,301 @@ window.addEventListener('focus', () => {
 // Listen for real-time clipboard updates from main process
 window.api.onClipboardChanged(() => loadClips());
 window.api.onRefresh(() => loadClips());
+
+// ── Snippets panel ──
+
+const snippetsBtn = document.getElementById('snippets-btn') as HTMLButtonElement;
+const snippetsOverlay = document.getElementById('snippets-overlay') as HTMLDivElement;
+const snippetsClose = document.getElementById('snippets-close') as HTMLButtonElement;
+const snippetsBody = document.getElementById('snippets-body') as HTMLDivElement;
+const snippetsSearch = document.getElementById('snippets-search') as HTMLInputElement;
+const snippetsTitle = document.getElementById('snippets-title') as HTMLSpanElement;
+const snippetsNewBtn = document.getElementById('snippets-new-btn') as HTMLButtonElement;
+const snippetsForm = document.getElementById('snippets-form') as HTMLDivElement;
+const snippetNameInput = document.getElementById('snippet-name-input') as HTMLInputElement;
+const snippetContentInput = document.getElementById('snippet-content-input') as HTMLTextAreaElement;
+const snippetFormSave = document.getElementById('snippet-form-save') as HTMLButtonElement;
+const snippetFormCancel = document.getElementById('snippet-form-cancel') as HTMLButtonElement;
+
+let editingSnippetId: number | null = null;
+let snippetFocusedIndex = -1;
+
+async function loadSnippets(): Promise<void> {
+  const query = snippetsSearch.value.trim();
+  const snippets: SnippetItem[] = query
+    ? await window.api.searchSnippets(query)
+    : await window.api.getSnippets();
+
+  renderSnippets(snippets);
+}
+
+function renderSnippets(snippets: SnippetItem[]): void {
+  snippetsBody.innerHTML = '';
+
+  if (snippets.length === 0) {
+    snippetsBody.innerHTML = '<div class="snippets-empty">No snippets yet. Click "+ New" to create one!</div>';
+    snippetFocusedIndex = -1;
+    return;
+  }
+
+  for (let i = 0; i < snippets.length; i++) {
+    snippetsBody.appendChild(createSnippetElement(snippets[i], i));
+  }
+
+  snippetFocusedIndex = 0;
+  setSnippetFocus(0);
+}
+
+function createSnippetElement(snippet: SnippetItem, index: number): HTMLDivElement {
+  const item = document.createElement('div');
+  item.className = 'snippet-item';
+  item.dataset.index = String(index);
+
+  const info = document.createElement('div');
+  info.className = 'snippet-info';
+
+  const name = document.createElement('div');
+  name.className = 'snippet-name';
+  name.textContent = snippet.name;
+
+  const preview = document.createElement('div');
+  preview.className = 'snippet-preview';
+  preview.textContent = snippet.content.substring(0, 80);
+
+  info.appendChild(name);
+  info.appendChild(preview);
+
+  const actions = document.createElement('div');
+  actions.className = 'snippet-actions';
+
+  const editBtn = document.createElement('button');
+  editBtn.className = 'snippet-action-btn';
+  editBtn.title = 'Edit';
+  editBtn.textContent = '\u270E'; // ✎
+  editBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    startEditingSnippet(snippet);
+  });
+
+  const deleteBtn = document.createElement('button');
+  deleteBtn.className = 'snippet-action-btn delete-btn';
+  deleteBtn.title = 'Delete';
+  deleteBtn.textContent = '\u00d7';
+  deleteBtn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    await window.api.deleteSnippet(snippet.id);
+    loadSnippets();
+  });
+
+  actions.appendChild(editBtn);
+  actions.appendChild(deleteBtn);
+
+  item.appendChild(info);
+  item.appendChild(actions);
+
+  // Click to copy snippet to clipboard
+  item.addEventListener('click', async () => {
+    await window.api.copySnippet(snippet.id);
+    item.classList.add('copied');
+    setTimeout(() => {
+      item.classList.remove('copied');
+    }, 600);
+  });
+
+  item.addEventListener('mouseenter', () => {
+    snippetFocusedIndex = index;
+    setSnippetFocus(index);
+  });
+
+  return item;
+}
+
+function setSnippetFocus(index: number): void {
+  const items = snippetsBody.querySelectorAll<HTMLDivElement>('.snippet-item');
+  items.forEach((el) => el.classList.remove('focused'));
+  if (index >= 0 && index < items.length) {
+    snippetFocusedIndex = index;
+    items[index].classList.add('focused');
+    items[index].scrollIntoView({ block: 'nearest' });
+  }
+}
+
+function openSnippets(): void {
+  snippetsSearch.value = '';
+  hideSnippetForm();
+  snippetsOverlay.classList.add('visible');
+  loadSnippets();
+  snippetsSearch.focus();
+}
+
+function closeSnippets(): void {
+  snippetsOverlay.classList.remove('visible');
+  hideSnippetForm();
+  editingSnippetId = null;
+}
+
+function showSnippetForm(title: string, name: string, content: string): void {
+  snippetsTitle.textContent = title;
+  snippetNameInput.value = name;
+  snippetContentInput.value = content;
+  snippetsForm.classList.remove('hidden');
+  snippetsBody.classList.add('hidden');
+  snippetNameInput.focus();
+}
+
+function hideSnippetForm(): void {
+  snippetsForm.classList.add('hidden');
+  snippetsBody.classList.remove('hidden');
+  snippetsTitle.textContent = 'Snippets';
+  editingSnippetId = null;
+}
+
+function startEditingSnippet(snippet: SnippetItem): void {
+  editingSnippetId = snippet.id;
+  showSnippetForm('Edit Snippet', snippet.name, snippet.content);
+}
+
+snippetsBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  openSnippets();
+});
+
+snippetsClose.addEventListener('click', closeSnippets);
+
+snippetsOverlay.addEventListener('click', (e) => {
+  if (e.target === snippetsOverlay) closeSnippets();
+});
+
+snippetsNewBtn.addEventListener('click', () => {
+  editingSnippetId = null;
+  showSnippetForm('New Snippet', '', '');
+});
+
+snippetFormCancel.addEventListener('click', () => {
+  hideSnippetForm();
+  snippetsSearch.focus();
+  loadSnippets();
+});
+
+snippetFormSave.addEventListener('click', async () => {
+  const name = snippetNameInput.value.trim();
+  const content = snippetContentInput.value.trim();
+  if (!name || !content) return;
+
+  if (editingSnippetId != null) {
+    await window.api.updateSnippet(editingSnippetId, { name, content });
+  } else {
+    await window.api.createSnippet(name, content);
+  }
+
+  hideSnippetForm();
+  snippetsSearch.focus();
+  loadSnippets();
+});
+
+// Keyboard within snippet form
+snippetNameInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    hideSnippetForm();
+    snippetsSearch.focus();
+    loadSnippets();
+  }
+});
+
+snippetContentInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    hideSnippetForm();
+    snippetsSearch.focus();
+    loadSnippets();
+  }
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+    e.preventDefault();
+    snippetFormSave.click();
+  }
+});
+
+// Search snippets
+let snippetSearchTimeout: number;
+snippetsSearch.addEventListener('input', () => {
+  clearTimeout(snippetSearchTimeout);
+  snippetSearchTimeout = window.setTimeout(() => loadSnippets(), 200);
+});
+
+// Keyboard nav within snippets list
+snippetsSearch.addEventListener('keydown', (e) => {
+  if (!snippetsForm.classList.contains('hidden')) return;
+
+  const items = snippetsBody.querySelectorAll<HTMLDivElement>('.snippet-item');
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    setSnippetFocus(Math.min(snippetFocusedIndex + 1, items.length - 1));
+    return;
+  }
+  if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    setSnippetFocus(Math.max(snippetFocusedIndex - 1, 0));
+    return;
+  }
+  if (e.key === 'Enter' && items.length > 0 && snippetFocusedIndex >= 0) {
+    e.preventDefault();
+    items[snippetFocusedIndex].click();
+    return;
+  }
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    closeSnippets();
+  }
+});
+
+// ── Save clip as snippet prompt ──
+
+const saveSnippetOverlay = document.getElementById('save-snippet-overlay') as HTMLDivElement;
+const saveSnippetClose = document.getElementById('save-snippet-close') as HTMLButtonElement;
+const saveSnippetCancel = document.getElementById('save-snippet-cancel') as HTMLButtonElement;
+const saveSnippetConfirm = document.getElementById('save-snippet-confirm') as HTMLButtonElement;
+const saveSnippetNameInput = document.getElementById('save-snippet-name') as HTMLInputElement;
+
+let saveSnippetClipId: number | null = null;
+
+function openSaveSnippetPrompt(clipId: number): void {
+  saveSnippetClipId = clipId;
+  saveSnippetNameInput.value = '';
+  saveSnippetOverlay.classList.add('visible');
+  saveSnippetNameInput.focus();
+}
+
+function closeSaveSnippetPrompt(): void {
+  saveSnippetOverlay.classList.remove('visible');
+  saveSnippetClipId = null;
+}
+
+saveSnippetClose.addEventListener('click', closeSaveSnippetPrompt);
+saveSnippetCancel.addEventListener('click', closeSaveSnippetPrompt);
+
+saveSnippetOverlay.addEventListener('click', (e) => {
+  if (e.target === saveSnippetOverlay) closeSaveSnippetPrompt();
+});
+
+saveSnippetConfirm.addEventListener('click', async () => {
+  const name = saveSnippetNameInput.value.trim();
+  if (!name || saveSnippetClipId == null) return;
+
+  await window.api.saveClipAsSnippet(saveSnippetClipId, name);
+  closeSaveSnippetPrompt();
+});
+
+saveSnippetNameInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    saveSnippetConfirm.click();
+  }
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    closeSaveSnippetPrompt();
+  }
+});
 
 // Initial load
 loadClips();
